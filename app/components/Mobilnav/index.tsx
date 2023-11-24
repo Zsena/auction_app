@@ -25,7 +25,7 @@ const MobileNav = () => {
       <div className="py-4 text-gray-500 dark:text-gray-400">
         <a
           className="ml-6 text-lg font-bold text-gray-800 dark:text-gray-200"
-          href="#"
+          href="/"
         >
           auction
         </a>
@@ -60,7 +60,7 @@ const MobileNav = () => {
             <a
               className="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150
                hover:text-gray-800 dark:hover:text-gray-200"
-              href="/"
+              href="/dashboard/search"
             >
               <svg
                 className="w-5 h-5"

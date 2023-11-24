@@ -1,6 +1,16 @@
-const ListSearch = () => {
+"use client";
+
+import { useEffect, useState, ChangeEvent } from "react";
+
+interface ListSearchProps {
+  placeholderValue: string;
+  value: string;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+}
+
+const ListSearch: React.FC<ListSearchProps> = (props: ListSearchProps) => {
   return (
-    <div className="flex justify-end flex-1 lg:mr-5">
+    <div className="flex justify-end flex-1 lg:mr-5 py-6">
       <div className="relative w-full max-w-xl mr-6 focus-within:text-teal-500">
         <div className="absolute inset-y-0 flex items-center pl-2">
           <svg
@@ -22,8 +32,10 @@ const ListSearch = () => {
       dark:focus:placeholder-gray-600 dark:bg-gray-700 dark:text-gray-200 focus:placeholder-gray-500 
       focus:bg-white focus:ring-teal-300 focus:outline-none focus:ring-2"
           type="text"
-          placeholder="Keresés"
+          placeholder={props.placeholderValue}
           aria-label="Search"
+          value={props.value}
+          onChange={props.onChange}
         />
       </div>
     </div>

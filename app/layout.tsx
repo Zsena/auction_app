@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Footer from "./components/Footer.tsx";
+import Footer from "./components/Footer";
 import Provider from "./components/Provider";
 import MainNav from "./components/MainNav";
 import MobileNav from "./components/Mobilnav";

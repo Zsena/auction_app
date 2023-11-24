@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, ChangeEvent } from "react";
+import ListSearch from "../ListSearch";
 
 interface TableHead {
   firstTh: string;
@@ -30,6 +31,8 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
   const [loading, setLoading] = useState<boolean>(true); // Új állapotváltozó a loading állapot követésére
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
+  const [query, setQuery] = useState("")
+
 
   useEffect(() => {
     let isMounted = true;
@@ -42,7 +45,9 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            filters: [],
+            "filters": [
+              {"model": "Auction", "field": "address", "op": "like", "value": "%" + query + "%"}
+            ],
             page_number: currentPage,
             page_size: 10,
             sorts: [],
@@ -84,7 +89,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
     return () => {
       isMounted = false;
     };
-  }, [currentPage]); // mount
+  }, [currentPage, query]); // mount
 
   const handlePageChange = (newPage: number) => {
     // console.log('New Page:', newPage);
@@ -92,8 +97,16 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
     setCurrentPage(newPage);
   };
 
+  const searchValue = (event: ChangeEvent<HTMLInputElement>) => {
+    setQuery(event.target.value);
+  };
+
   return (
-    <div>
+    <div
+      className={
+        "results " + (loading ? "flex items-center justify-center py-20" : "")
+      }
+    >
       {loading ? ( // Loading állapot ellenőrzése
         <div
           className="w-12 h-12 rounded-full animate-spin absolute
@@ -101,6 +114,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
         ></div>
       ) : (
         <div className="w-full overflow-hidden rounded-lg shadow-xs">
+         <ListSearch placeholderValue="Gyorskeresés" value={query} onChange={searchValue} />
           <div className="w-full overflow-x-auto">
             <table className="w-full whitespace-no-wrap">
               <thead>

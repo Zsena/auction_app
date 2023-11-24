@@ -3,7 +3,6 @@
 
 import React, { useEffect, useState } from "react";
 import AuctionTableList from "./components/AuctionTableList";
-import ListSearch from "./components/ListSearch";
 
 const Home: React.FC = () => {
   return (
@@ -14,7 +13,7 @@ const Home: React.FC = () => {
         </h1>
         <a
           className="flex items-center justify-between p-4 mb-8 text-sm font-semibold text-teal-100 bg-teal-700 rounded-lg shadow-md focus:outline-none focus:shadow-outline-teal"
-          href="#"
+          href="/dashboard/search"
         >
           <div className="flex items-center">
             <svg
@@ -30,7 +29,6 @@ const Home: React.FC = () => {
         </a>
       </div>
       <section className="my-5">
-        <ListSearch />
       </section>
       <AuctionTableList
         firstTh="Cím"
