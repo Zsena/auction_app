@@ -1,4 +1,4 @@
-FROM node:16.17.0-bullseye-slim
+FROM node
 WORKDIR /usr/src/app
 COPY . /usr/src/app
 RUN npm install
