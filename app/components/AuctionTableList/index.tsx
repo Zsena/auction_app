@@ -1,5 +1,6 @@
 import React, { useEffect, useState, ChangeEvent } from "react";
 import ListSearch from "../ListSearch";
+import BuildingType from "../BuildingType";
 
 interface TableHead {
   firstTh: string;
@@ -8,6 +9,12 @@ interface TableHead {
   fourthTh: string;
   fifthTh: string;
   sixTh: string;
+}
+
+interface BuildingType {
+  created_at: string;
+  id: number;
+  name: string;
 }
 
 interface Auction {
@@ -24,6 +31,7 @@ interface Auction {
   parcel_number: number;
   auction_type: string;
   bidding_ladder: number;
+  building_types: BuildingType[];
 }
 
 const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
@@ -31,8 +39,9 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
   const [loading, setLoading] = useState<boolean>(true); // Új állapotváltozó a loading állapot követésére
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
-  const [query, setQuery] = useState("")
-
+  const [query, setQuery] = useState("");
+  const [selectedBuildingType, setSelectedBuildingType] =
+    useState<string>("nincs");
 
   useEffect(() => {
     let isMounted = true;
@@ -45,11 +54,21 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            "filters": [
-              {"model": "Auction", "field": "address", "op": "like", "value": "%" + query + "%"}
+            filters: [
+              {
+                model: "Auction",
+                field: "address",
+                op: "like",
+                value: "%" + query + "%",
+                building_types: [
+                  {
+                    name: selectedBuildingType,
+                  },
+                ],
+              },
             ],
             page_number: currentPage,
-            page_size: 10,
+            page_size: 20,
             sorts: [],
           }),
         });
@@ -61,7 +80,6 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
         }
 
         const data = await response.json();
-        // console.log("Data received:", data);
 
         if (isMounted) {
           const auctionsArray = data || [];
@@ -89,7 +107,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
     return () => {
       isMounted = false;
     };
-  }, [currentPage, query]); // mount
+  }, [currentPage, query, selectedBuildingType]); // mount
 
   const handlePageChange = (newPage: number) => {
     // console.log('New Page:', newPage);
@@ -99,6 +117,13 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
 
   const searchValue = (event: ChangeEvent<HTMLInputElement>) => {
     setQuery(event.target.value);
+  };
+
+  const handleBuildingTypeChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const selectedType = event.target.value;
+    console.log("Selected Building Type:", selectedType);
+
+    setSelectedBuildingType(selectedType);
   };
 
   return (
@@ -114,7 +139,95 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
         ></div>
       ) : (
         <div className="w-full overflow-hidden rounded-lg shadow-xs">
-         <ListSearch placeholderValue="Gyorskeresés" value={query} onChange={searchValue} />
+          <div className="flex flex-col lg:flex-row justify-around lg:mr-5 py-6">
+            <div className="relative w-full lg:mx-6 focus-within:text-teal-500">
+              <div className="px-4 py-3 mb-8 bg-white rounded-lg shadow-md dark:bg-gray-800 h-full">
+                <label className="block text-sm">
+                  <span className="text-gray-700 dark:text-gray-400">
+                    Település
+                  </span>
+                  <ListSearch
+                    placeholderValue="Település"
+                    value={query}
+                    onChange={searchValue}
+                  />
+                </label>
+                <BuildingType onChange={handleBuildingTypeChange} />
+                <label className="block mt-4 text-sm">
+                  <span className="text-gray-700 dark:text-gray-400">
+                    Besorolás
+                  </span>
+                  <select className="primary-select">
+                    <option>Option 1</option>
+                    <option>Option 2</option>
+                    <option>Option 3</option>
+                    <option>Option 4</option>
+                    <option>Option 5</option>
+                  </select>
+                </label>
+                <label className="block mt-4 text-sm">
+                  <span className="text-gray-700 dark:text-gray-400">
+                    Beköltözhető
+                  </span>
+                  <select className="primary-select">
+                    <option>Igen</option>
+                    <option>Nem</option>
+                  </select>
+                </label>
+                <div className="flex mt-6 text-sm">
+                  <label className="flex items-center dark:text-gray-400">
+                    <input type="checkbox" className="primary-checkbox" />
+                    <span className="ml-2">online</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div className="relative w-full lg:mx-6 focus-within:text-teal-500">
+              <div className="px-4 py-3 mb-8 bg-white rounded-lg shadow-md dark:bg-gray-800 h-full">
+                <label className="block mt-4 text-sm">
+                  <span className="text-gray-700 dark:text-gray-400">
+                    Kikiáltási ár
+                  </span>
+                  <select className="primary-select">
+                    <option>$1,000</option>
+                    <option>$5,000</option>
+                    <option>$10,000</option>
+                    <option>$25,000</option>
+                  </select>
+                </label>
+
+                <label className="block mt-4 text-sm">
+                  <span className="text-gray-700 dark:text-gray-400">
+                    Aktuális ár
+                  </span>
+                  <select className="primary-select">
+                    <option>Option 1</option>
+                    <option>Option 2</option>
+                    <option>Option 3</option>
+                    <option>Option 4</option>
+                    <option>Option 5</option>
+                  </select>
+                </label>
+                <label className="block mt-4 text-sm">
+                  <span className="text-gray-700 dark:text-gray-400">
+                    Lejárat
+                  </span>
+                  <select className="primary-select">
+                    <option>Option 1</option>
+                    <option>Option 2</option>
+                    <option>Option 3</option>
+                    <option>Option 4</option>
+                    <option>Option 5</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          </div>
+          <ListSearch
+            placeholderValue="Gyorskeresés"
+            value={query}
+            onChange={searchValue}
+          />
           <div className="w-full overflow-x-auto">
             <table className="w-full whitespace-no-wrap">
               <thead>

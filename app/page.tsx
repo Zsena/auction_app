@@ -3,6 +3,7 @@
 
 import React, { useEffect, useState } from "react";
 import AuctionTableList from "./components/AuctionTableList";
+import SearchBox from "./components/BuildingType";
 
 const Home: React.FC = () => {
   return (
@@ -28,8 +29,6 @@ const Home: React.FC = () => {
           <span>Keresés →</span>
         </a>
       </div>
-      <section className="my-5">
-      </section>
       <AuctionTableList
         firstTh="Cím"
         secondTh="Kikiáltási ár"

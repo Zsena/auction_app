@@ -7,3 +7,15 @@
     text-white transition-colors duration-150 bg-teal-700 border border-transparent rounded-lg active:bg-teal-700 
     hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-600;
 }
+
+.primary-input, .primary-select {
+  @apply w-full pl-8 pr-2 py-3 text-sm text-gray-700 placeholder-gray-600 
+  bg-gray-100 border-0 rounded-md dark:placeholder-gray-500 dark:focus:ring-gray-200
+  dark:focus:placeholder-gray-600 dark:bg-gray-700 dark:text-gray-200 focus:placeholder-gray-500 
+  focus:bg-white focus:ring-teal-300 focus:outline-none focus:ring-2;
+}
+
+.primary-checkbox {
+  @apply accent-teal-500 focus:ring-teal-400 focus:outline-none focus:ring-2 
+  text-slate-900 text-sm font-semibold dark:text-slate-200;
+}
