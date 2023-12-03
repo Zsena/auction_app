@@ -43,6 +43,8 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
   const [selectedBuildingType, setSelectedBuildingType] =
     useState<string>("nincs");
 
+  const page_size = 30;
+
   useEffect(() => {
     let isMounted = true;
 
@@ -60,16 +62,18 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                 field: "address",
                 op: "like",
                 value: "%" + query + "%",
-                building_types: [
-                  {
-                    name: selectedBuildingType,
-                  },
-                ],
+              },
+              {
+                model: "BuildingType",
+                field: "name",
+                op: "like",
+                value: "%" + selectedBuildingType + "%",
               },
             ],
             page_number: currentPage,
-            page_size: 20,
-            sorts: [],
+            page_size: page_size,
+            total_count: "",
+            sorts: [{ model: "Auction", field: "id", direction: "asc" }],
           }),
         });
 
@@ -82,10 +86,14 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
         const data = await response.json();
 
         if (isMounted) {
-          const auctionsArray = data || [];
-          if (Array.isArray(auctionsArray)) {
-            const totalPagesCount = 10;
-            setAuctions(auctionsArray);
+          const { auctions, total_count } = data || {
+            auctions: [],
+            total_count: 0,
+          };
+
+          if (Array.isArray(auctions)) {
+            const totalPagesCount = Math.ceil(total_count / page_size); // Assuming page_size is 30
+            setAuctions(auctions);
             setTotalPages(totalPagesCount);
             setLoading(false);
           } else {
@@ -121,8 +129,6 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
 
   const handleBuildingTypeChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const selectedType = event.target.value;
-    console.log("Selected Building Type:", selectedType);
-
     setSelectedBuildingType(selectedType);
   };
 
@@ -291,61 +297,156 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
               <span className="flex col-span-4 mt-2 sm:mt-auto sm:justify-end">
                 <nav aria-label="Table navigation">
                   <ul className="inline-flex items-center">
-                    <li>
-                      <button
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
-                        className="px-3 py-1 rounded-md rounded-l-lg focus:outline-none focus:shadow-outline-teal"
-                        aria-label="Previous"
-                      >
-                        <svg
-                          aria-hidden="true"
-                          className="w-4 h-4 fill-current"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-                            clipRule="evenodd"
-                            fillRule="evenodd"
-                          ></path>
-                        </svg>
-                      </button>
-                    </li>
-                    {/* Pagination */}
-                    {Array.from({ length: totalPages }, (_, index) => (
-                      <li key={index}>
+                    {/* left arrow */}
+                    {currentPage > 1 && (
+                      <li>
                         <button
-                          onClick={() => handlePageChange(index + 1)}
-                          className={`px-3 py-1 rounded-md focus:outline-none focus:shadow-outline-teal ${
-                            currentPage === index + 1
-                              ? "text-white transition-colors duration-150 bg-teal-700 border border-r-0 border-teal-700 rounded-md"
-                              : ""
-                          }`}
+                          onClick={() => handlePageChange(currentPage - 1)}
+                          className="px-3 py-1 rounded-md focus:outline-none focus:shadow-outline-teal"
                         >
-                          {index + 1}
+                          <svg
+                            aria-hidden="true"
+                            className="w-4 h-4 fill-current"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                              fillRule="evenodd"
+                            ></path>
+                          </svg>
                         </button>
                       </li>
-                    ))}
-                    <li>
-                      <button
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                        className="px-3 py-1 rounded-md rounded-r-lg focus:outline-none focus:shadow-outline-teal"
-                        aria-label="Next"
-                      >
-                        <svg
-                          className="w-4 h-4 fill-current"
-                          aria-hidden="true"
-                          viewBox="0 0 20 20"
+                    )}
+
+                    {/* Pagination */}
+                    {Array.from({ length: totalPages }, (_, index) => {
+                      // first page
+                      if (index === 0) {
+                        return (
+                          <li key={index}>
+                            <button
+                              onClick={() => handlePageChange(index + 1)}
+                              className={`px-3 py-1 rounded-md focus:outline-none focus:shadow-outline-teal ${
+                                currentPage === index + 1
+                                  ? "text-white transition-colors duration-150 bg-teal-700 border border-r-0 border-teal-700 rounded-md"
+                                  : ""
+                              }`}
+                            >
+                              {index + 1}
+                            </button>
+                          </li>
+                        );
+                      }
+                      // first 3 page
+                      else if (
+                        currentPage <= 3 &&
+                        (index + 1 <= 5 || index + 1 === totalPages)
+                      ) {
+                        return (
+                          <li key={index}>
+                            <button
+                              onClick={() => handlePageChange(index + 1)}
+                              className={`px-3 py-1 rounded-md focus:outline-none focus:shadow-outline-teal ${
+                                currentPage === index + 1
+                                  ? "text-white transition-colors duration-150 bg-teal-700 border border-r-0 border-teal-700 rounded-md"
+                                  : ""
+                              }`}
+                            >
+                              {index + 1}
+                            </button>
+                          </li>
+                        );
+                      }
+                      // last 3 page
+                      else if (
+                        currentPage >= totalPages - 2 &&
+                        (index + 1 >= totalPages - 4 || index === 0)
+                      ) {
+                        return (
+                          <li key={index}>
+                            <button
+                              onClick={() => handlePageChange(index + 1)}
+                              className={`px-3 py-1 rounded-md focus:outline-none focus:shadow-outline-teal ${
+                                currentPage === index + 1
+                                  ? "text-white transition-colors duration-150 bg-teal-700 border border-r-0 border-teal-700 rounded-md"
+                                  : ""
+                              }`}
+                            >
+                              {index + 1}
+                            </button>
+                          </li>
+                        );
+                      }
+                      // current page and surrounding pages
+                      else if (
+                        index + 1 >= currentPage - 1 &&
+                        index + 1 <= currentPage + 1
+                      ) {
+                        return (
+                          <li key={index}>
+                            <button
+                              onClick={() => handlePageChange(index + 1)}
+                              className={`px-3 py-1 rounded-md focus:outline-none focus:shadow-outline-teal ${
+                                currentPage === index + 1
+                                  ? "text-white transition-colors duration-150 bg-teal-700 border border-r-0 border-teal-700 rounded-md"
+                                  : ""
+                              }`}
+                            >
+                              {index + 1}
+                            </button>
+                          </li>
+                        );
+                      }
+                      // last page
+                      else if (index === totalPages - 1) {
+                        return (
+                          <li key={index}>
+                            <button
+                              onClick={() => handlePageChange(index + 1)}
+                              className={`px-3 py-1 rounded-md focus:outline-none focus:shadow-outline-teal ${
+                                currentPage === index + 1
+                                  ? "text-white transition-colors duration-150 bg-teal-700 border border-r-0 border-teal-700 rounded-md"
+                                  : ""
+                              }`}
+                            >
+                              {index + 1}
+                            </button>
+                          </li>
+                        );
+                      }
+                      // dots
+                      else if (index === 1 || index === totalPages - 2) {
+                        return (
+                          <li key={index}>
+                            <span className="px-3 py-1">...</span>
+                          </li>
+                        );
+                      }
+                      return null;
+                    })}
+
+                    {/* right arrow */}
+                    {currentPage < totalPages && (
+                      <li>
+                        <button
+                          onClick={() => handlePageChange(currentPage + 1)}
+                          className="px-3 py-1 rounded-md focus:outline-none focus:shadow-outline-teal"
                         >
-                          <path
-                            d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                            clipRule="evenodd"
-                            fillRule="evenodd"
-                          ></path>
-                        </svg>
-                      </button>
-                    </li>
+                          <svg
+                            className="w-4 h-4 fill-current"
+                            aria-hidden="true"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                              clipRule="evenodd"
+                              fillRule="evenodd"
+                            ></path>
+                          </svg>
+                        </button>
+                      </li>
+                    )}
                   </ul>
                 </nav>
               </span>
