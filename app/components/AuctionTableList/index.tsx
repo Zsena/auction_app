@@ -52,7 +52,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
 
     const fetchData = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:3491/auctions", {
+        const response = await fetch("https://auction-api-dev.mptrdev.com/auctions", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
