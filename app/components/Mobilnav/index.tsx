@@ -60,7 +60,7 @@ const MobileNav = () => {
             <a
               className="inline-flex items-center w-full text-sm font-semibold transition-colors duration-150
                hover:text-gray-800 dark:hover:text-gray-200"
-              href="/dashboard/search"
+              href="pages/search"
             >
               <svg
                 className="w-5 h-5"

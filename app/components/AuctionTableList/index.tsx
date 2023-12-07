@@ -2,6 +2,9 @@ import React, { useEffect, useState, ChangeEvent } from "react";
 import ListSearch from "../ListSearch";
 import BuildingType from "../BuildingType";
 import Status from "../Status";
+import Classification from "../Classification";
+import CanMoveIn from "../CanMoveIn";
+import Link from 'next/link';
 
 interface TableHead {
   firstTh: string;
@@ -12,7 +15,7 @@ interface TableHead {
   sixTh: string;
 }
 
-interface BuildingType {
+interface LocalBuildingType {
   created_at: string;
   id: number;
   name: string;
@@ -32,18 +35,23 @@ interface Auction {
   parcel_number: number;
   auction_type: string;
   bidding_ladder: number;
-  building_types: BuildingType[];
+  building_types: LocalBuildingType[];
+  can_move_in: boolean;
 }
 
 const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
   const [auctions, setAuctions] = useState<Auction[]>([]);
-  const [loading, setLoading] = useState<boolean>(true); // Új állapotváltozó a loading állapot követésére
+  const [loading, setLoading] = useState<boolean>(true);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [query, setQuery] = useState("");
-  const [selectedBuildingType, setSelectedBuildingType] =
-    useState<string>("nincs");
+  const [selectedBuildingType, setSelectedBuildingType] = useState<string>("");
   const [showOnlineAuctions, setShowOnlineAuctions] = useState(true);
+  const [showOfflineAuctions, setShowOfflineAuctions] = useState(true);
+  const [selectedClassification, setSelectedClassification] =
+    useState<string>("");
+  const [auctionType, setAuctionType] = useState<string>("online"); // Initialize with "online"
+  const [canMoveIn, setCanMoveIn] = useState(true);
 
   const page_size = 30;
 
@@ -52,32 +60,54 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
 
     const fetchData = async () => {
       try {
-        const response = await fetch("https://auction-api-dev.mptrdev.com/auctions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            filters: [
-              {
-                model: "Auction",
-                field: "address",
-                op: "like",
-                value: "%" + query + "%",
-              },
-              {
-                model: "BuildingType",
-                field: "name",
-                op: "like",
-                value: "%" + selectedBuildingType + "%",
-              },
-            ],
-            page_number: currentPage,
-            page_size: page_size,
-            total_count: "",
-            sorts: [{ model: "Auction", field: "id", direction: "asc" }],
-          }),
-        });
+        const response = await fetch(
+          "https://auction-api-dev.mptrdev.com/auctions",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              filters: [
+                {
+                  model: "Auction",
+                  field: "address",
+                  op: "like",
+                  value: "%" + query + "%",
+                },
+                {
+                  model: "BuildingType",
+                  field: "name",
+                  op: "like",
+                  value: "%" + selectedBuildingType + "%",
+                },
+                {
+                  model: "Auction",
+                  field: "classification",
+                  op: "like",
+                  value: "%" + selectedClassification + "%",
+                },
+
+                {
+                  model: "Auction",
+                  field: "auction_type",
+                  op: "like",
+                  value: "%" + auctionType + "%",
+                },
+                {
+                  model: "Auction",
+                  field: "can_move_in",
+                  op: "==",
+                  value: canMoveIn,
+                },
+              ],
+              page_number: currentPage,
+              page_size: page_size,
+              total_count: "",
+              sorts: [{ model: "Auction", field: "id", direction: "asc" }],
+            }),
+          }
+        );
 
         if (!response.ok) {
           throw new Error(
@@ -86,7 +116,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
         }
 
         const data = await response.json();
-        console.log(data);
+        // console.log(data);
 
         if (isMounted) {
           const { auctions, total_count } = data || {
@@ -118,7 +148,16 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
     return () => {
       isMounted = false;
     };
-  }, [currentPage, query, selectedBuildingType]); // mount
+  }, [
+    currentPage,
+    query,
+    selectedBuildingType,
+    showOnlineAuctions,
+    showOfflineAuctions,
+    selectedClassification,
+    auctionType,
+    canMoveIn,
+  ]); // mount
 
   const handlePageChange = (newPage: number) => {
     // console.log('New Page:', newPage);
@@ -130,13 +169,31 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
     setQuery(event.target.value);
   };
 
-  const handleBuildingTypeChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const selectedType = event.target.value;
-    setSelectedBuildingType(selectedType);
+  const handleCanMoveInChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const selectedValue = event.target.value;
+    setCanMoveIn(selectedValue === "true");
   };
 
-  const handleOnlineChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setShowOnlineAuctions(event.target.checked);
+  const handleAuctionTypeChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedType = event.target.value;
+    setShowOnlineAuctions(selectedType === "online");
+    setShowOfflineAuctions(selectedType === "offline");
+    setAuctionType(selectedType);
+  };
+
+  const handleClassificationChange = (
+    event: ChangeEvent<HTMLSelectElement>
+  ) => {
+    setSelectedClassification(event.target.value);
+  };
+
+  const handleBuildingTypeChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const buildingType = event.target.value;
+    setSelectedBuildingType(buildingType);
+
+    if (!buildingType || buildingType.toLowerCase() === "nincs") {
+      setSelectedClassification("");
+    }
   };
 
   const filteredAuctions = showOnlineAuctions
@@ -149,7 +206,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
         "results " + (loading ? "flex items-center justify-center py-20" : "")
       }
     >
-      {loading ? ( // Loading állapot ellenőrzése
+      {loading ? (
         <div
           className="w-12 h-12 rounded-full animate-spin absolute
           border-8 border-solid border-teal-700 border-t-transparent"
@@ -170,28 +227,22 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                   />
                 </label>
                 <BuildingType onChange={handleBuildingTypeChange} />
-                <label className="block mt-4 text-sm">
-                  <span className="text-gray-700 dark:text-gray-400">
-                    Besorolás
-                  </span>
-                  <select className="primary-select">
-                    <option>Option 1</option>
-                    <option>Option 2</option>
-                    <option>Option 3</option>
-                    <option>Option 4</option>
-                    <option>Option 5</option>
-                  </select>
-                </label>
-                <label className="block mt-4 text-sm">
-                  <span className="text-gray-700 dark:text-gray-400">
-                    Beköltözhető
-                  </span>
-                  <select className="primary-select">
-                    <option>Igen</option>
-                    <option>Nem</option>
-                  </select>
-                </label>
-                <Status name="online" onChange={handleOnlineChange} />
+                {/* Conditionally render Classification based on selectedBuildingType */}
+                {selectedBuildingType &&
+                  selectedBuildingType.toLowerCase() !== "nincs" && (
+                    <Classification onChange={handleClassificationChange} />
+                  )}
+                <CanMoveIn value={canMoveIn} onChange={handleCanMoveInChange} />
+                <Status
+                  name="Online"
+                  selected={auctionType}
+                  onChange={handleAuctionTypeChange}
+                />
+                <Status
+                  name="Offline"
+                  selected={auctionType}
+                  onChange={handleAuctionTypeChange}
+                />
               </div>
             </div>
             <div className="relative w-full lg:mx-6 focus-within:text-teal-500">
@@ -235,11 +286,14 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
               </div>
             </div>
           </div>
-          <ListSearch
-            placeholderValue="Gyorskeresés"
-            value={query}
-            onChange={searchValue}
-          />
+          <div className="flex justify-end flex-1">
+            <ListSearch
+              placeholderValue="Gyorskeresés"
+              value={query}
+              onChange={searchValue}
+            />
+          </div>
+
           <div className="w-full overflow-x-auto">
             <table className="w-full whitespace-no-wrap">
               <thead>
@@ -259,27 +313,34 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                     className="text-gray-700 dark:text-gray-400"
                   >
                     <td className="px-4 py-3">
-                      <div className="flex items-center text-sm">
-                        <div className="relative hidden w-14 h-14 mr-3 rounded-full md:block">
-                          <img
-                            className="object-cover w-full h-full rounded-full"
-                            src={
-                              "http://127.0.0.1:3491/download_file?folder=Offline_auctions&file=" +
-                              auction.link_to_first_image +
-                              "&download=0"
-                            }
-                            alt=""
-                            loading="lazy"
-                          />
-                          <div
-                            className="absolute inset-0 rounded-full shadow-inner"
-                            aria-hidden="true"
-                          ></div>
+                     
+                        <div className="flex items-center text-sm">
+                          <div className="relative hidden w-14 h-14 mr-3 rounded-full md:block">
+                            <img
+                              className="object-cover w-full h-full rounded-full"
+                              src={
+                                "https://auction-api-dev.mptrdev.com/download_file?folder=" +
+                                (auction.auction_type === "online"
+                                  ? "Online_auctions"
+                                  : "Offline_auctions") +
+                                "&file=" +
+                                auction.link_to_first_image +
+                                "&download=0"
+                              }
+                              alt=""
+                              loading="lazy"
+                            />
+                            <div
+                              className="absolute inset-0 rounded-full shadow-inner"
+                              aria-hidden="true"
+                            ></div>
+                          </div>
+                          <div>
+                            <p className="font-semibold">{auction.address}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-semibold">{auction.address}</p>
-                        </div>
-                      </div>
+                        {/* <Link href="/pages/auctions/[id]" as={`/pages/auctions/${auction.id}`} passHref>
+                      </Link> */}
                     </td>
                     <td className="px-4 py-3 text-sm">{`${auction.starting_price.toLocaleString()} Ft`}</td>
 
@@ -294,12 +355,27 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                       >
                         {auction.auction_type}
                       </span>
+
+                      {canMoveIn && auction.auction_type !== "offline" && (
+                        <span className="px-2 text-xs py-1 font-semibold leading-tight rounded-full dark:text-green-100 ml-2 bg-teal-600 text-white">
+                          Beköltözhető
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      {auction.bidding_ladder}
+                      {`${auction.bidding_ladder.toLocaleString()} Ft`}
                     </td>
                     <td className="px-4 py-3 text-sm">
-                      {auction.online_auction_planned_end_time}
+                      {new Date(
+                        auction.online_auction_planned_end_time
+                      ).toLocaleString("hu-HU", {
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })}
                     </td>
                   </tr>
                 ))}

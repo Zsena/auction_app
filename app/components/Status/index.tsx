@@ -4,20 +4,22 @@ import { ChangeEvent } from "react";
 
 interface StatusProps {
   name: string;
+  selected: string;
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
 }
 
-const Status: React.FC<StatusProps> = (props: StatusProps) => {
+const Status: React.FC<StatusProps> = ({ name, selected, onChange }) => {
   return (
     <div className="flex mt-6 text-sm">
       <label className="flex items-center dark:text-gray-400">
         <input
-          type="checkbox"
-          className="primary-checkbox"
-          onChange={props.onChange}
-          defaultChecked
+          type="radio"
+          className="primary-radio"
+          value={name.toLowerCase()}
+          checked={selected === name.toLowerCase()}
+          onChange={onChange}
         />
-        <span className="ml-2">{props.name}</span>
+        <span className="ml-2">{name}</span>
       </label>
     </div>
   );

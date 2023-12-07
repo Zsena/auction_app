@@ -14,7 +14,7 @@ const Home: React.FC = () => {
         </h1>
         <a
           className="flex items-center justify-between p-4 mb-8 text-sm font-semibold text-teal-100 bg-teal-700 rounded-lg shadow-md focus:outline-none focus:shadow-outline-teal"
-          href="/dashboard/search"
+          href="pages/search"
         >
           <div className="flex items-center">
             <svg
