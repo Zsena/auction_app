@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, ChangeEvent } from "react";
+import { ChangeEvent } from "react";
 
 interface ListSearchProps {
   placeholderValue: string;
@@ -27,10 +27,7 @@ const ListSearch: React.FC<ListSearchProps> = (props: ListSearchProps) => {
           </svg>
         </div>
         <input
-          className="w-full pl-8 pr-2 py-3 text-sm text-gray-700 placeholder-gray-600 
-      bg-gray-100 border-0 rounded-md dark:placeholder-gray-500 dark:focus:ring-gray-200
-      dark:focus:placeholder-gray-600 dark:bg-gray-700 dark:text-gray-200 focus:placeholder-gray-500 
-      focus:bg-white focus:ring-teal-300 focus:outline-none focus:ring-2"
+          className="primary-input"
           type="text"
           placeholder={props.placeholderValue}
           aria-label="Search"
