@@ -39,7 +39,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
 
     const fetchData = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:3491/auctions", {
+        const response = await fetch("https://auction-api-dev.mptrdev.com/auctions", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -139,7 +139,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                           <img
                             className="object-cover w-full h-full rounded-full"
                             src={
-                              "http://127.0.0.1:3491/download_file?folder=Offline_auctions&file=" +
+                              "https://auction-api-dev.mptrdev.com/download_file?folder=Offline_auctions&file=" +
                               auction.link_to_first_image +
                               "&download=0"
                             }
