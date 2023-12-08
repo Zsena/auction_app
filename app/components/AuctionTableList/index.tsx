@@ -313,7 +313,8 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                     className="text-gray-700 dark:text-gray-400"
                   >
                     <td className="px-4 py-3">
-                     
+                    <Link href="/dashboard/auctions/[id]" as={`/dashboard/auctions/${auction.id}`} passHref>
+
                         <div className="flex items-center text-sm">
                           <div className="relative hidden w-14 h-14 mr-3 rounded-full md:block">
                             <img
@@ -339,8 +340,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                             <p className="font-semibold">{auction.address}</p>
                           </div>
                         </div>
-                        {/* <Link href="/pages/auctions/[id]" as={`/pages/auctions/${auction.id}`} passHref>
-                      </Link> */}
+                      </Link>
                     </td>
                     <td className="px-4 py-3 text-sm">{`${auction.starting_price.toLocaleString()} Ft`}</td>
 
