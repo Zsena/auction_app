@@ -1,6 +1,6 @@
 import DropdownMenu from "../DropdownMenu";
 
-const MobileNav = () => {
+const NavList = () => {
   const chevronDown = (
     <svg
       className="w-6 h-6"
@@ -21,13 +21,25 @@ const MobileNav = () => {
   const dropdownItems = ["Item 1", "Item 2", "Item 3"];
 
   return (
-    <aside className="z-20 hidden w-64 overflow-y-auto bg-white dark:bg-gray-800 md:block flex-shrink-0">
-      <div className="py-4 text-gray-500 dark:text-gray-400">
+      <div className="py-4 text-gray-500 dark:text-gray-400 w-full md:w-64 fixed">
         <a
-          className="ml-6 text-lg font-bold text-gray-800 dark:text-gray-200"
+          className="ml-6 text-lg font-bold text-gray-800 dark:text-gray-200 flex items-center"
           href="/"
         >
-          auction
+          <span className="text-teal-400">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="30"
+              height="30"
+              viewBox="0 0 24 24"
+            >
+              <path
+                fill="currentColor"
+                d="M14.005 20.003v2h-12v-2h12ZM14.59.689l7.778 7.778l-1.414 1.414l-1.061-.353l-2.475 2.475l5.657 5.657l-1.414 1.414l-5.657-5.657L13.6 15.82l.283 1.131l-1.415 1.415l-7.778-7.779l1.414-1.414l1.132.283l6.293-6.293l-.353-1.06L14.59.688Zm.707 3.536l-7.071 7.07l3.535 3.536l7.071-7.071l-3.535-3.535Z"
+              />
+            </svg>
+          </span>
+          <span className="ml-2">Auction</span>
         </a>
         <ul className="mt-6">
           <li className="relative px-6 py-3">
@@ -61,12 +73,12 @@ const MobileNav = () => {
             customClass="primary-btn"
             title="asdf"
             listColor="text-teal-500"
-            customIcon={chevronDown} alignClass="left-0"
+            customIcon={chevronDown}
+            alignClass="left-0"
           />
         </div>
       </div>
-    </aside>
   );
 };
 
-export default MobileNav;
+export default NavList;
