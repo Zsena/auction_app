@@ -3,8 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Footer from "./components/Footer";
 import Provider from "./components/Provider";
-import MainNav from "./components/MainNav";
-import MobileNav from "./components/Mobilnav";
+import MainNav from "./components/Header";
+import MobileNav from "./components/NavBar";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -27,7 +27,7 @@ export default function RootLayout({
               <MobileNav />
               <section className="flex flex-col flex-1 w-full">
                 <MainNav />
-                <div className="container px-6 mx-auto grid">{children}</div>
+                <div className="w-full px-6 mx-auto grid">{children}</div>
               </section>
             </div>
             <Footer />

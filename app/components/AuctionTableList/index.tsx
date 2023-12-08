@@ -294,10 +294,10 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
             />
           </div>
 
-          <div className="w-full overflow-x-auto">
+          <div className="w-full overflow-x-auto rounded-lg">
             <table className="w-full whitespace-no-wrap">
               <thead>
-                <tr className="text-xs font-semibold tracking-wide text-left text-gray-500 uppercase border-b dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-800">
+                <tr className="table-head">
                   <th className="px-4 py-3">{props.firstTh}</th>
                   <th className="px-4 py-3">{props.secondTh}</th>
                   <th className="px-4 py-3">{props.thirdTh}</th>
@@ -347,7 +347,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                     <td className="px-4 py-3 text-sm">{`${auction.minimal_price.toLocaleString()} Ft`}</td>
                     <td className="px-4 py-3 text-xs">
                       <span
-                        className={`px-2 py-1 font-semibold leading-tight  rounded-full dark:text-green-100 ${
+                        className={`px-2 py-1 font-semibold leading-tight  rounded-full ${
                           auction.auction_type === "offline"
                             ? "bg-red-300 text-red-700"
                             : "bg-green-100 text-green-700"
