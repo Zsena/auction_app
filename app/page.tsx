@@ -14,12 +14,13 @@ const Home: React.FC = () => {
         </h1>
       </div>
       <AuctionTableList
-        firstTh="Cím"
-        secondTh="Kikiáltási ár"
-        thirdTh="Minimum ár"
-        fourthTh="Offline vagy Online"
-        fifthTh="Licitlépcső"
-        sixTh="Árverés vége"
+        post_code_to_settlement="Irányítószám"
+        address="Cím"
+        starting_price="Kikiáltási ár"
+        minimal_price="Minimum ár"
+        auction_type="Offline vagy Online"
+        bidding_ladder="Licitlépcső"
+        online_auction_planned_end_time="Árverés vége"
       />
     </section>
   );

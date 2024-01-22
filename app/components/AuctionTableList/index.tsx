@@ -4,15 +4,18 @@ import BuildingType from "../BuildingType";
 import Status from "../Status";
 import Classification from "../Classification";
 import CanMoveIn from "../CanMoveIn";
-import Link from 'next/link';
+import Link from "next/link";
+import StartingPriceFilter from "../StartingPriceFilter";
+import MinimalPriceFilter from "../MinimalPriceFilter";
 
 interface TableHead {
-  firstTh: string;
-  secondTh: string;
-  thirdTh: string;
-  fourthTh: string;
-  fifthTh: string;
-  sixTh: string;
+  address: string;
+  starting_price: string;
+  minimal_price: string;
+  auction_type: string;
+  bidding_ladder: string;
+  online_auction_planned_end_time: string;
+  post_code_to_settlement: string;
 }
 
 interface LocalBuildingType {
@@ -30,14 +33,28 @@ interface Auction {
   link_to_first_image: string;
   online_auction_strat_time: string;
   online_auction_planned_end_time: string;
-  post_code: number;
   city: string;
   parcel_number: number;
   auction_type: string;
   bidding_ladder: number;
   building_types: LocalBuildingType[];
   can_move_in: boolean;
+  address_short: string;
+  post_code_to_settlement: {
+    post_code: string;
+  };
 }
+
+interface StartingPriceRange {
+  min: number;
+  max: number;
+}
+
+interface MinimalPriceRange {
+  min: number;
+  max: number;
+}
+
 
 const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
   const [auctions, setAuctions] = useState<Auction[]>([]);
@@ -52,11 +69,21 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
     useState<string>("");
   const [auctionType, setAuctionType] = useState<string>("online"); // Initialize with "online"
   const [canMoveIn, setCanMoveIn] = useState(true);
-
+  const [sortField, setSortField] = useState<string>("address");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const page_size = 30;
+  const [selectedStartingPrice, setSelectedStartingPrice] = useState<StartingPriceRange | null>(null);
+  const [selectedMinimalPrice, setSelectedMinimalPrice] = useState<MinimalPriceRange | null>(null);
+
+
 
   useEffect(() => {
     let isMounted = true;
+
+    // A sort logika hozzáadása
+    const sorts = [
+      { model: "Auction", field: sortField, direction: sortDirection },
+    ];
 
     const fetchData = async () => {
       try {
@@ -71,7 +98,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
               filters: [
                 {
                   model: "Auction",
-                  field: "address",
+                  field: "address_short",
                   op: "like",
                   value: "%" + query + "%",
                 },
@@ -100,11 +127,35 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                   op: "==",
                   value: canMoveIn,
                 },
+                {
+                  model: "Auction",
+                  field: "starting_price",
+                  op: "<=",
+                  value: selectedStartingPrice ? selectedStartingPrice.max : 1000000
+                },
+                {
+                  model: "Auction",
+                  field: "starting_price",
+                  op: ">",
+                  value: selectedStartingPrice ? selectedStartingPrice.min : 0
+                },
+                {
+                  model: "Auction",
+                  field: "minimal_price",
+                  op: "<=",
+                  value: selectedMinimalPrice ? selectedMinimalPrice.max : 1000000
+                },
+                {
+                  model: "Auction",
+                  field: "minimal_price",
+                  op: ">",
+                  value: selectedMinimalPrice ? selectedMinimalPrice.min : 0
+                }
               ],
               page_number: currentPage,
               page_size: page_size,
               total_count: "",
-              sorts: [{ model: "Auction", field: "id", direction: "asc" }],
+              sorts: sorts,
             }),
           }
         );
@@ -157,7 +208,67 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
     selectedClassification,
     auctionType,
     canMoveIn,
+    sortField,
+    sortDirection,
+    selectedStartingPrice,
+    selectedMinimalPrice
   ]); // mount
+
+  const handleSortChange = (field: string) => {
+    // if (field === "post_code_to_settlement") {
+    //   setAuctions(
+    //     [...auctions].sort((a, b) => {
+    //       // parse num
+    //       const postCodeA = parseInt(a.post_code_to_settlement.post_code, 10);
+    //       const postCodeB = parseInt(b.post_code_to_settlement.post_code, 10);
+
+    //       // if number
+    //       if (!isNaN(postCodeA) && !isNaN(postCodeB)) {
+    //         return sortDirection === "asc"
+    //           ? postCodeA - postCodeB
+    //           : postCodeB - postCodeA;
+    //       } else {
+    //         return 0;
+    //       }
+    //     })
+    //   );
+    // } else {
+    //   // base sorting
+    //   if (sortField === field) {
+    //     setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    //   } else {
+    //     setSortField(field);
+    //     setSortDirection("asc");
+    //   }
+    // }
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+      console.log(sortDirection);
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const handleStartingPriceChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value;
+    if (value) {
+      const [min, max] = value.split("-").map(Number);
+      setSelectedStartingPrice({ min, max });
+    } else {
+      setSelectedStartingPrice(null);
+    }
+  };
+
+  const handleMinimalPriceChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value;
+    if (value) {
+      const [min, max] = value.split("-").map(Number);
+      setSelectedMinimalPrice({ min, max });
+    } else {
+      setSelectedMinimalPrice(null);
+    }
+  };
 
   const handlePageChange = (newPage: number) => {
     // console.log('New Page:', newPage);
@@ -234,12 +345,20 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                   )}
                 <CanMoveIn value={canMoveIn} onChange={handleCanMoveInChange} />
                 <Status
-                  name="Online"
+                  name="Élő"
+                  statusName="Online"
                   selected={auctionType}
                   onChange={handleAuctionTypeChange}
                 />
                 <Status
-                  name="Offline"
+                  name="Lezárt"
+                  statusName="Offline"
+                  selected={auctionType}
+                  onChange={handleAuctionTypeChange}
+                />
+                <Status
+                  name="Folyamatos // ez még nem müködik // Misivel egyeztetek"
+                  statusName="folyamatos"
                   selected={auctionType}
                   onChange={handleAuctionTypeChange}
                 />
@@ -247,30 +366,8 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
             </div>
             <div className="relative w-full lg:mx-6 focus-within:text-teal-500">
               <div className="px-4 py-3 mb-8 bg-white rounded-lg shadow-md dark:bg-gray-800 h-full">
-                <label className="block mt-4 text-sm">
-                  <span className="text-gray-700 dark:text-gray-400">
-                    Kikiáltási ár
-                  </span>
-                  <select className="primary-select">
-                    <option>$1,000</option>
-                    <option>$5,000</option>
-                    <option>$10,000</option>
-                    <option>$25,000</option>
-                  </select>
-                </label>
-
-                <label className="block mt-4 text-sm">
-                  <span className="text-gray-700 dark:text-gray-400">
-                    Aktuális ár
-                  </span>
-                  <select className="primary-select">
-                    <option>Option 1</option>
-                    <option>Option 2</option>
-                    <option>Option 3</option>
-                    <option>Option 4</option>
-                    <option>Option 5</option>
-                  </select>
-                </label>
+              <StartingPriceFilter onChange={handleStartingPriceChange} />
+              <MinimalPriceFilter onChange={handleMinimalPriceChange} />
                 <label className="block mt-4 text-sm">
                   <span className="text-gray-700 dark:text-gray-400">
                     Lejárat
@@ -298,12 +395,140 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
             <table className="w-full whitespace-no-wrap">
               <thead>
                 <tr className="table-head">
-                  <th className="px-4 py-3">{props.firstTh}</th>
-                  <th className="px-4 py-3">{props.secondTh}</th>
-                  <th className="px-4 py-3">{props.thirdTh}</th>
-                  <th className="px-4 py-3">{props.fourthTh}</th>
-                  <th className="px-4 py-3">{props.fifthTh}</th>
-                  <th className="px-4 py-3">{props.sixTh}</th>
+                  <th className="px-4 py-3">
+                    <span>{props.post_code_to_settlement}</span>
+                    {/* <button
+                      title="Rendezés"
+                      className="ml-2"
+                      onClick={() => handleSortChange('post_code_to_settlement')}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          fill="#fff"
+                          d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
+                        />
+                      </svg>
+                    </button> */}
+                  </th>
+
+                  <th className="px-4 py-3">
+                    <span className="relative -top-[5px]">{props.address}</span>
+                    <button
+                      title="Rendezés"
+                      className="ml-2"
+                      onClick={() => handleSortChange("address_short")}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          fill="#fff"
+                          d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
+                        />
+                      </svg>
+                    </button>
+                  </th>
+                  <th className="px-4 py-3">
+                    <span className="relative -top-[5px]">
+                      {props.starting_price}
+                    </span>
+                    <button
+                      title="Rendezés"
+                      className="ml-2"
+                      onClick={() => handleSortChange("starting_price")}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          fill="#fff"
+                          d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
+                        />
+                      </svg>
+                    </button>
+                  </th>
+                  <th className="px-4 py-3">
+                    <span className="relative -top-[5px]">
+                      {props.minimal_price}
+                    </span>
+                    <button
+                      title="Rendezés"
+                      className="ml-2"
+                      onClick={() => handleSortChange("minimal_price")}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          fill="#fff"
+                          d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
+                        />
+                      </svg>
+                    </button>
+                  </th>
+                  <th className="px-4 py-3">
+                    <span>{props.auction_type}</span>
+                  </th>
+                  <th className="px-4 py-3">
+                    <span className="relative -top-[5px]">
+                      {props.bidding_ladder}
+                    </span>
+                    <button
+                      title="Rendezés"
+                      className="ml-2"
+                      onClick={() => handleSortChange("bidding_ladder")}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          fill="#fff"
+                          d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
+                        />
+                      </svg>
+                    </button>
+                  </th>
+                  <th className="px-4 py-3">
+                    <span className="relative -top-[5px]">
+                      {props.online_auction_planned_end_time}
+                    </span>
+                    <button
+                      title="Rendezés"
+                      className="ml-2"
+                      onClick={() =>
+                        handleSortChange("online_auction_planned_end_time")
+                      }
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          fill="#fff"
+                          d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
+                        />
+                      </svg>
+                    </button>
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y dark:divide-gray-700 dark:bg-gray-800">
@@ -312,9 +537,17 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                     key={auction.id}
                     className="text-gray-700 dark:text-gray-400"
                   >
+                    <td className="px-4 py-3 text-sm">
+                      <p className="font-semibold">
+                        {auction.post_code_to_settlement.post_code}
+                      </p>
+                    </td>
                     <td className="px-4 py-3">
-                    <Link href="/dashboard/auctions/[id]" as={`/dashboard/auctions/${auction.id}`} passHref>
-
+                      <Link
+                        href="/dashboard/auctions/[id]"
+                        as={`/dashboard/auctions/${auction.id}`}
+                        passHref
+                      >
                         <div className="flex items-center text-sm">
                           <div className="relative hidden w-14 h-14 mr-3 rounded-full md:block">
                             <img
@@ -337,7 +570,9 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                             ></div>
                           </div>
                           <div>
-                            <p className="font-semibold">{auction.address}</p>
+                            <p className="font-semibold">
+                              {auction.address_short}
+                            </p>
                           </div>
                         </div>
                       </Link>
@@ -347,13 +582,19 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                     <td className="px-4 py-3 text-sm">{`${auction.minimal_price.toLocaleString()} Ft`}</td>
                     <td className="px-4 py-3 text-xs">
                       <span
-                        className={`px-2 py-1 font-semibold leading-tight  rounded-full ${
+                        className={`px-2 py-1 font-semibold leading-tight rounded-full ${
                           auction.auction_type === "offline"
                             ? "bg-red-300 text-red-700"
+                            : auction.auction_type === "folyamatos"
+                            ? "bg-blue-300 text-blue-700"
                             : "bg-green-100 text-green-700"
                         }`}
                       >
-                        {auction.auction_type}
+                        {auction.auction_type === "offline"
+                          ? "Lezárt"
+                          : auction.auction_type === "folyamatos"
+                          ? "Folyamatos"
+                          : "Élő"}
                       </span>
 
                       {canMoveIn && auction.auction_type !== "offline" && (
