@@ -1,24 +1,24 @@
-import DropdownMenu from "../DropdownMenu";
+// import DropdownMenu from "../DropdownMenu";
 
 const NavList = () => {
-  const chevronDown = (
-    <svg
-      className="w-6 h-6"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-        d="M19 9l-7 7-7-7"
-      />
-    </svg>
-  );
+  // const chevronDown = (
+  //   <svg
+  //     className="w-6 h-6"
+  //     fill="none"
+  //     stroke="currentColor"
+  //     viewBox="0 0 24 24"
+  //     xmlns="http://www.w3.org/2000/svg"
+  //   >
+  //     <path
+  //       strokeLinecap="round"
+  //       strokeLinejoin="round"
+  //       strokeWidth="2"
+  //       d="M19 9l-7 7-7-7"
+  //     />
+  //   </svg>
+  // );
 
-  const dropdownItems = ["Item 1", "Item 2", "Item 3"];
+  // const dropdownItems = ["Item 1", "Item 2", "Item 3"];
 
   return (
       <div className="py-4 text-gray-500 dark:text-gray-400 w-full md:w-64 fixed">
@@ -67,7 +67,7 @@ const NavList = () => {
             </a>
           </li>
         </ul>
-        <div className="px-6 my-6 w-full">
+        {/* <div className="px-6 my-6 w-full">
           <DropdownMenu
             items={dropdownItems}
             customClass="primary-btn"
@@ -76,7 +76,7 @@ const NavList = () => {
             customIcon={chevronDown}
             alignClass="left-0"
           />
-        </div>
+        </div> */}
       </div>
   );
 };
