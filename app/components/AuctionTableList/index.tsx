@@ -7,6 +7,8 @@ import CanMoveIn from "../CanMoveIn";
 import Link from "next/link";
 import StartingPriceFilter from "../StartingPriceFilter";
 import MinimalPriceFilter from "../MinimalPriceFilter";
+import Collapsible from "react-collapsible";
+import CountyCheckboxList from "../CountyCheckboxList";
 
 interface TableHead {
   address: string;
@@ -25,6 +27,7 @@ interface LocalBuildingType {
 }
 
 interface Auction {
+  final_result: null;
   id: number;
   address: string;
   auction_advance: number;
@@ -55,7 +58,6 @@ interface MinimalPriceRange {
   max: number;
 }
 
-
 const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -67,16 +69,16 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
   const [showOfflineAuctions, setShowOfflineAuctions] = useState(true);
   const [selectedClassification, setSelectedClassification] =
     useState<string>("");
-  const [auctionType, setAuctionType] = useState<string>("online"); // Initialize with "online"
-  const [canMoveIn, setCanMoveIn] = useState(true);
+  const [auctionType, setAuctionType] = useState<string>("");
+  const [canMoveIn, setCanMoveIn] = useState<boolean | null>(null);
   const [sortField, setSortField] = useState<string>("address");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const page_size = 30;
-  const [selectedStartingPrice, setSelectedStartingPrice] = useState<StartingPriceRange | null>(null);
-  const [selectedMinimalPrice, setSelectedMinimalPrice] = useState<MinimalPriceRange | null>(null);
-
-
-
+  const [selectedStartingPrice, setSelectedStartingPrice] =
+    useState<StartingPriceRange | null>(null);
+  const [selectedMinimalPrice, setSelectedMinimalPrice] =
+    useState<MinimalPriceRange | null>(null);
+  const [selectedCounties, setSelectedCounties] = useState<string[]>([]);
   useEffect(() => {
     let isMounted = true;
 
@@ -87,6 +89,126 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
 
     const fetchData = async () => {
       try {
+        const filters = [];
+        if (query)
+          filters.push({
+            field: "address_short",
+            op: "like",
+            value: "%" + query + "%",
+          });
+        if (selectedBuildingType)
+          filters.push({
+            field: "building_type_name",
+            op: "like",
+            value: "%" + selectedBuildingType + "%",
+          });
+        if (selectedClassification)
+          filters.push({
+            field: "classification",
+            op: "like",
+            value: "%" + selectedClassification + "%",
+          });
+
+        if (auctionType === "online") {
+          filters.push({
+            field: "auction_type",
+            op: "==",
+            value: "online",
+          });
+          filters.push({
+            field: "final_result",
+            op: "==",
+            value: null,
+          });
+        } else if (auctionType === "finished") {
+          filters.push({
+            field: "auction_type",
+            op: "==",
+            value: "online",
+          });
+          filters.push({
+            field: "final_result",
+            op: "!=",
+            value: null,
+          });
+        } else if (auctionType === "offline") {
+          filters.push({
+            field: "auction_type",
+            op: "==",
+            value: "offline",
+          });
+        }
+
+        if (canMoveIn) {
+          filters.push({
+            field: "can_move_in",
+            op: "==",
+            value: canMoveIn,
+          });
+        }
+        if (selectedStartingPrice) {
+          filters.push({
+            field: "starting_price",
+            op: "<=",
+            value: selectedStartingPrice.max,
+          });
+          filters.push({
+            field: "starting_price",
+            op: ">",
+            value: selectedStartingPrice.min,
+          });
+        }
+        if (selectedMinimalPrice) {
+          filters.push({
+            field: "minimal_price",
+            op: "<=",
+            value: selectedMinimalPrice.max,
+          });
+          filters.push({
+            field: "minimal_price",
+            op: ">",
+            value: selectedMinimalPrice.min,
+          });
+        }
+        if (selectedCounties.length > 0) {
+          filters.push({
+            field: "county_name",
+            op: "in",
+            value: selectedCounties,
+          });
+        }
+
+        // const requestBody = {
+        //   filters,
+        //   page_number: currentPage,
+        //   page_size,
+        //   sorts: [{ field: sortField, direction: sortDirection }],
+        // };
+
+        // const response = await fetch(
+        //   "https://auction-api-dev.mptrdev.com/auctions",
+        //   {
+        //     method: "POST",
+        //     headers: {
+        //       "Content-Type": "application/json",
+        //     },
+        //     body: JSON.stringify(requestBody),
+        //   }
+        // );
+
+        // if (!response.ok) {
+        //   throw new Error(
+        //     `Network response was not ok: ${response.status} ${response.statusText}`
+        //   );
+        // }
+
+        const requestBody = {
+          filters,
+          page_number: currentPage,
+          page_size,
+          sorts: [{ field: sortField, direction: sortDirection }],
+        };
+
         const response = await fetch(
           "https://auction-api-dev.mptrdev.com/auctions",
           {
@@ -94,69 +216,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-              filters: [
-                {
-                  model: "Auction",
-                  field: "address_short",
-                  op: "like",
-                  value: "%" + query + "%",
-                },
-                {
-                  model: "BuildingType",
-                  field: "name",
-                  op: "like",
-                  value: "%" + selectedBuildingType + "%",
-                },
-                {
-                  model: "Auction",
-                  field: "classification",
-                  op: "like",
-                  value: "%" + selectedClassification + "%",
-                },
-
-                {
-                  model: "Auction",
-                  field: "auction_type",
-                  op: "like",
-                  value: "%" + auctionType + "%",
-                },
-                {
-                  model: "Auction",
-                  field: "can_move_in",
-                  op: "==",
-                  value: canMoveIn,
-                },
-                {
-                  model: "Auction",
-                  field: "starting_price",
-                  op: "<=",
-                  value: selectedStartingPrice ? selectedStartingPrice.max : 1000000
-                },
-                {
-                  model: "Auction",
-                  field: "starting_price",
-                  op: ">",
-                  value: selectedStartingPrice ? selectedStartingPrice.min : 0
-                },
-                {
-                  model: "Auction",
-                  field: "minimal_price",
-                  op: "<=",
-                  value: selectedMinimalPrice ? selectedMinimalPrice.max : 1000000
-                },
-                {
-                  model: "Auction",
-                  field: "minimal_price",
-                  op: ">",
-                  value: selectedMinimalPrice ? selectedMinimalPrice.min : 0
-                }
-              ],
-              page_number: currentPage,
-              page_size: page_size,
-              total_count: "",
-              sorts: sorts,
-            }),
+            body: JSON.stringify(requestBody),
           }
         );
 
@@ -167,7 +227,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
         }
 
         const data = await response.json();
-        // console.log(data);
+        //console.log(data);
 
         if (isMounted) {
           const { auctions, total_count } = data || {
@@ -211,8 +271,22 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
     sortField,
     sortDirection,
     selectedStartingPrice,
-    selectedMinimalPrice
+    selectedMinimalPrice,
+    selectedCounties,
   ]); // mount
+
+  const handleCountySelectionChange = (
+    selectedCounty: string,
+    isChecked: boolean
+  ) => {
+    if (isChecked) {
+      setSelectedCounties((prev) => [...prev, selectedCounty]);
+    } else {
+      setSelectedCounties((prev) =>
+        prev.filter((county) => county !== selectedCounty)
+      );
+    }
+  };
 
   const handleSortChange = (field: string) => {
     // if (field === "post_code_to_settlement") {
@@ -243,7 +317,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
     // }
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-      console.log(sortDirection);
+      //console.log(sortDirection);
     } else {
       setSortField(field);
       setSortDirection("asc");
@@ -287,8 +361,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
 
   const handleAuctionTypeChange = (event: ChangeEvent<HTMLInputElement>) => {
     const selectedType = event.target.value;
-    setShowOnlineAuctions(selectedType === "online");
-    setShowOfflineAuctions(selectedType === "offline");
+    console.log("Selected auction type:", selectedType); // Debugging line
     setAuctionType(selectedType);
   };
 
@@ -307,9 +380,17 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
     }
   };
 
-  const filteredAuctions = showOnlineAuctions
-    ? auctions.filter((auction) => auction.auction_type === "online")
-    : auctions;
+  const filteredAuctions = auctions.map((auction) => {
+    let auctionStatus = "Folyamatos";
+
+    if (auction.auction_type === "online") {
+      auctionStatus = auction.final_result === null ? "Élő" : "Befejezett";
+    }
+
+    auctionStatus = JSON.stringify(auction);
+
+    return { ...auction, displayStatus: auctionStatus };
+  });
 
   return (
     <div
@@ -324,65 +405,88 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
         ></div>
       ) : (
         <div className="w-full overflow-hidden rounded-lg shadow-xs">
-          <div className="flex flex-col lg:flex-row justify-around lg:mr-5 py-6">
-            <div className="relative w-full lg:mx-6 focus-within:text-teal-500">
-              <div className="px-4 py-3 mb-8 bg-white rounded-lg shadow-md dark:bg-gray-800 h-full">
-                <label className="block text-sm">
-                  <span className="text-gray-700 dark:text-gray-400">
-                    Település
-                  </span>
-                  <ListSearch
-                    placeholderValue="Település"
-                    value={query}
-                    onChange={searchValue}
+          <Collapsible
+            triggerOpenedClassName="text-sm p-4 w-fit flex items-center font-semibold text-cyan-100 bg-cyan-700 rounded-lg shadow-md ml-5"
+            triggerClassName="text-sm p-4 w-fit flex items-center font-semibold text-indigo-100 bg-indigo-700 rounded-lg shadow-md ml-5"
+            trigger="Szűrők megjelenítése + "
+            triggerWhenOpen="Szűrők bezárása - "
+          >
+            <div className="flex flex-col lg:flex-row justify-around lg:mr-5 py-6">
+              <div className="relative w-full lg:mx-6 focus-within:text-teal-500">
+                <div className="px-4 py-3 mb-8 bg-white rounded-lg shadow-md dark:bg-gray-800 h-full">
+                  <label className="block text-sm">
+                    <span className="text-gray-700 dark:text-gray-400">
+                      Település
+                    </span>
+                    <ListSearch
+                      placeholderValue="Település"
+                      value={query}
+                      onChange={searchValue}
+                    />
+                  </label>
+                  <BuildingType onChange={handleBuildingTypeChange} />
+                  {/* Conditionally render Classification based on selectedBuildingType */}
+                  {selectedBuildingType &&
+                    selectedBuildingType.toLowerCase() !== "nincs" && (
+                      <Classification onChange={handleClassificationChange} />
+                    )}
+                  <CanMoveIn
+                    value={canMoveIn}
+                    onChange={handleCanMoveInChange}
                   />
-                </label>
-                <BuildingType onChange={handleBuildingTypeChange} />
-                {/* Conditionally render Classification based on selectedBuildingType */}
-                {selectedBuildingType &&
-                  selectedBuildingType.toLowerCase() !== "nincs" && (
-                    <Classification onChange={handleClassificationChange} />
-                  )}
-                <CanMoveIn value={canMoveIn} onChange={handleCanMoveInChange} />
-                <Status
-                  name="Élő"
-                  statusName="Online"
-                  selected={auctionType}
-                  onChange={handleAuctionTypeChange}
-                />
-                <Status
-                  name="Lezárt"
-                  statusName="Offline"
-                  selected={auctionType}
-                  onChange={handleAuctionTypeChange}
-                />
-                <Status
-                  name="Folyamatos // ez még nem müködik // Misivel egyeztetek"
-                  statusName="folyamatos"
-                  selected={auctionType}
-                  onChange={handleAuctionTypeChange}
-                />
+                  <Status
+                    name="Minden árverés"
+                    statusName="" // Represents the option to display all auctions
+                    selected={auctionType}
+                    onChange={handleAuctionTypeChange}
+                  />
+                  <Status
+                    name="Élő árverés"
+                    statusName="online" // Intended to request live online auctions from the server
+                    selected={auctionType}
+                    onChange={handleAuctionTypeChange}
+                  />
+                  <Status
+                    name="Befejezett árverés"
+                    statusName="finished" // Intended to request finished online auctions from the server
+                    selected={auctionType}
+                    onChange={handleAuctionTypeChange}
+                  />
+                  <Status
+                    name="Folyamatos árverés"
+                    statusName="offline" // Intended to request offline auctions from the server
+                    selected={auctionType}
+                    onChange={handleAuctionTypeChange}
+                  />
+                </div>
+              </div>
+              <div className="relative w-full lg:mx-6 focus-within:text-teal-500">
+                <div className="px-4 py-3 mb-8 bg-white rounded-lg shadow-md dark:bg-gray-800 h-full">
+                  <StartingPriceFilter onChange={handleStartingPriceChange} />
+                  <MinimalPriceFilter onChange={handleMinimalPriceChange} />
+                  {/* <label className="block mt-4 text-sm">
+                    <span className="text-gray-700 dark:text-gray-400">
+                      Lejárat
+                    </span>
+                    <select className="primary-select">
+                      <option>Option 1</option>
+                      <option>Option 2</option>
+                      <option>Option 3</option>
+                      <option>Option 4</option>
+                      <option>Option 5</option>
+                    </select>
+                  </label> */}
+                  <h1 className="text-xl font-bold mt-5">
+                    Magyarországi vármegyék
+                  </h1>
+                  <CountyCheckboxList
+                    selectedCounties={selectedCounties}
+                    onCountySelectionChange={handleCountySelectionChange}
+                  />
+                </div>
               </div>
             </div>
-            <div className="relative w-full lg:mx-6 focus-within:text-teal-500">
-              <div className="px-4 py-3 mb-8 bg-white rounded-lg shadow-md dark:bg-gray-800 h-full">
-              <StartingPriceFilter onChange={handleStartingPriceChange} />
-              <MinimalPriceFilter onChange={handleMinimalPriceChange} />
-                <label className="block mt-4 text-sm">
-                  <span className="text-gray-700 dark:text-gray-400">
-                    Lejárat
-                  </span>
-                  <select className="primary-select">
-                    <option>Option 1</option>
-                    <option>Option 2</option>
-                    <option>Option 3</option>
-                    <option>Option 4</option>
-                    <option>Option 5</option>
-                  </select>
-                </label>
-              </div>
-            </div>
-          </div>
+          </Collapsible>
           <div className="flex justify-end flex-1">
             <ListSearch
               placeholderValue="Gyorskeresés"
@@ -395,7 +499,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
             <table className="w-full whitespace-no-wrap">
               <thead>
                 <tr className="table-head">
-                  <th className="px-4 py-3">
+                  <th className="px-4 py-3 min-w-[160px]">
                     <span>{props.post_code_to_settlement}</span>
                     {/* <button
                       title="Rendezés"
@@ -416,7 +520,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                     </button> */}
                   </th>
 
-                  <th className="px-4 py-3">
+                  <th className="px-4 py-3 min-w-[160px]">
                     <span className="relative -top-[5px]">{props.address}</span>
                     <button
                       title="Rendezés"
@@ -436,7 +540,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                       </svg>
                     </button>
                   </th>
-                  <th className="px-4 py-3">
+                  <th className="px-4 py-3 min-w-[160px]">
                     <span className="relative -top-[5px]">
                       {props.starting_price}
                     </span>
@@ -458,7 +562,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                       </svg>
                     </button>
                   </th>
-                  <th className="px-4 py-3">
+                  <th className="px-4 py-3 min-w-[160px]">
                     <span className="relative -top-[5px]">
                       {props.minimal_price}
                     </span>
@@ -480,10 +584,10 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                       </svg>
                     </button>
                   </th>
-                  <th className="px-4 py-3">
+                  <th className="px-4 py-3 min-w-[160px]">
                     <span>{props.auction_type}</span>
                   </th>
-                  <th className="px-4 py-3">
+                  <th className="px-4 py-3 min-w-[160px]">
                     <span className="relative -top-[5px]">
                       {props.bidding_ladder}
                     </span>
@@ -505,7 +609,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                       </svg>
                     </button>
                   </th>
-                  <th className="px-4 py-3">
+                  <th className="px-4 py-3 min-w-[160px]">
                     <span className="relative -top-[5px]">
                       {props.online_auction_planned_end_time}
                     </span>
@@ -583,20 +687,16 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                     <td className="px-4 py-3 text-xs">
                       <span
                         className={`px-2 py-1 font-semibold leading-tight rounded-full ${
-                          auction.auction_type === "offline"
-                            ? "bg-red-300 text-red-700"
-                            : auction.auction_type === "folyamatos"
+                          auction.displayStatus === "Folyamatos"
                             ? "bg-blue-300 text-blue-700"
-                            : "bg-green-100 text-green-700"
+                            : auction.displayStatus === "Élő"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-300 text-red-700"
                         }`}
                       >
-                        {auction.auction_type === "offline"
-                          ? "Lezárt"
-                          : auction.auction_type === "folyamatos"
-                          ? "Folyamatos"
-                          : "Élő"}
+                        {auction.displayStatus}
                       </span>
-
+                      
                       {canMoveIn && auction.auction_type !== "offline" && (
                         <span className="px-2 text-xs py-1 font-semibold leading-tight rounded-full dark:text-green-100 ml-2 bg-teal-600 text-white">
                           Beköltözhető
