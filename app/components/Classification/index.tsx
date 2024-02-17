@@ -12,7 +12,7 @@ const Classification: React.FC<ClassificationProps> = (
   return (
     <label className="block mt-4 text-sm">
       <span className="text-gray-700 dark:text-gray-400">Besorolás</span>
-      <select className="primary-select" onChange={props.onChange}>
+      <select className="primary-select mt-2" onChange={props.onChange}>
         <option value="egyéb">egyéb</option>
         <option value="ipari">ipari</option>
         <option value="lakóépület">lakóépület</option>

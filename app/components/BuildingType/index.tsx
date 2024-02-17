@@ -11,7 +11,7 @@ const BuildingType: React.FC<BuildingTypeProps> = (props: BuildingTypeProps) => 
   return (
       <label className="block mt-4 text-sm">
         <span className="text-gray-700 dark:text-gray-400">Épület típusa</span>
-        <select className="primary-select" onChange={props.onChange} >
+        <select className="primary-select mt-2" onChange={props.onChange} >
           <option value="">nincs</option>
           <option value="lakóház">lakóház</option>
           <option value="öröklakás">öröklakás</option>

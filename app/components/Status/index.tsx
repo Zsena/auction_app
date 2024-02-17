@@ -9,7 +9,12 @@ interface StatusProps {
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
 }
 
-const Status: React.FC<StatusProps> = ({ name, statusName, selected, onChange }) => {
+const Status: React.FC<StatusProps> = ({
+  name,
+  statusName,
+  selected,
+  onChange,
+}) => {
   return (
     <div className="flex mt-6 text-sm">
       <label className="flex items-center dark:text-gray-400">

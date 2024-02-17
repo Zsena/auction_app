@@ -21,7 +21,7 @@ const NavList = () => {
   // const dropdownItems = ["Item 1", "Item 2", "Item 3"];
 
   return (
-      <div className="py-4 text-gray-500 dark:text-gray-400 w-full md:w-64 fixed">
+      <div className="py-4 text-gray-500 dark:text-gray-400 w-full lg:w-64 fixed">
         <a
           className="ml-6 text-lg font-bold text-gray-800 dark:text-gray-200 flex items-center"
           href="/"
