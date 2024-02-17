@@ -9,7 +9,7 @@ const Home: React.FC = () => {
   return (
     <section className="h-full overflow-y-auto">
       <div className="container px-6 mx-auto grid">
-        <h1 className="my-20 text-3xl lg:text-5xl">
+        <h1 className="mt-10 mb-5 text-3xl lg:text-5xl text-center">
           Ingatlan árverések Magyarországon
         </h1>
       </div>
@@ -18,9 +18,13 @@ const Home: React.FC = () => {
         address="Cím"
         starting_price="Kikiáltási ár"
         minimal_price="Minimum ár"
-        auction_type="Offline vagy Online"
+        auction_type="Státusz"
         bidding_ladder="Licitlépcső"
+        round_end_time="Kör vége"
+        current_round="Aukciós kör"
+        round_min_price="Kör min. értéke"
         online_auction_planned_end_time="Árverés vége"
+        highest_bid="Legmagasabb ajánlat"
       />
     </section>
   );

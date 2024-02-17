@@ -45,7 +45,7 @@ const CountyCheckboxList: React.FC<CountyCheckboxListProps> = ({ selectedCountie
               onChange={(e) => onCountySelectionChange(county.name, e.target.checked)}
               className="form-checkbox h-5 w-5 text-teal-600"
             />
-            <span className="text-gray-700">{county.name}</span>
+            <span className="text-gray-700 dark:text-gray-400">{county.name}</span>
           </label>
         ))}
       </div>

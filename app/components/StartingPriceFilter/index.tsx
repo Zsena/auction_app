@@ -10,7 +10,7 @@ const StartingPriceFilter: React.FC<StartingPriceFilterProps> = (props: Starting
   return (
     <label className="block mt-4 text-sm">
       <span className="text-gray-700 dark:text-gray-400">Kikiáltási ár</span>
-      <select className="primary-select" onChange={props.onChange}>
+      <select className="primary-select mt-2" onChange={props.onChange}>
         <option value="">Összes</option>
         <option value="0-1000000">0 - 1,000,000 Ft</option>
         <option value="1000001-5000000">1,000,001 - 5,000,000 Ft</option>

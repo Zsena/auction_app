@@ -9,6 +9,8 @@ import StartingPriceFilter from "../StartingPriceFilter";
 import MinimalPriceFilter from "../MinimalPriceFilter";
 import Collapsible from "react-collapsible";
 import CountyCheckboxList from "../CountyCheckboxList";
+import CurrentRound from "../CurrentRound";
+import Pagination from "../Pagination";
 
 interface TableHead {
   address: string;
@@ -16,8 +18,12 @@ interface TableHead {
   minimal_price: string;
   auction_type: string;
   bidding_ladder: string;
-  online_auction_planned_end_time: string;
+  round_end_time: string;
   post_code_to_settlement: string;
+  current_round: string;
+  round_min_price: string;
+  online_auction_planned_end_time: string;
+  highest_bid: string;
 }
 
 interface LocalBuildingType {
@@ -26,8 +32,16 @@ interface LocalBuildingType {
   name: string;
 }
 
+interface LastAuctionHistory {
+  final_result: null | string;
+  is_current: boolean;
+  highest_bid: number | null;
+}
+
 interface Auction {
-  final_result: null;
+  // final_result: null;
+  last_auction_history: LastAuctionHistory;
+  // is_current: boolean;
   id: number;
   address: string;
   auction_advance: number;
@@ -46,6 +60,18 @@ interface Auction {
   post_code_to_settlement: {
     post_code: string;
   };
+  round_1_min_price: number;
+  round_2_min_price: number;
+  round_3_min_price: number;
+  round_2_discount: number;
+  round_3_discount: number;
+  round_1_start_time: string;
+  round_1_end_time: string;
+  round_2_start_time: string;
+  round_2_end_time: string;
+  round_3_start_time: string;
+  round_3_end_time: string;
+  current_round: any;
 }
 
 interface StartingPriceRange {
@@ -65,27 +91,24 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
   const [totalPages, setTotalPages] = useState<number>(1);
   const [query, setQuery] = useState("");
   const [selectedBuildingType, setSelectedBuildingType] = useState<string>("");
-  const [showOnlineAuctions, setShowOnlineAuctions] = useState(true);
-  const [showOfflineAuctions, setShowOfflineAuctions] = useState(true);
   const [selectedClassification, setSelectedClassification] =
     useState<string>("");
   const [auctionType, setAuctionType] = useState<string>("");
   const [canMoveIn, setCanMoveIn] = useState<boolean | null>(null);
-  const [sortField, setSortField] = useState<string>("address");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [sortField, setSortField] = useState<string>(
+    "online_auction_planned_end_time"
+  );
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const page_size = 30;
   const [selectedStartingPrice, setSelectedStartingPrice] =
     useState<StartingPriceRange | null>(null);
   const [selectedMinimalPrice, setSelectedMinimalPrice] =
     useState<MinimalPriceRange | null>(null);
   const [selectedCounties, setSelectedCounties] = useState<string[]>([]);
+  const [currentRound, setCurrentRound] = useState(0);
+
   useEffect(() => {
     let isMounted = true;
-
-    // A sort logika hozzáadása
-    const sorts = [
-      { model: "Auction", field: sortField, direction: sortDirection },
-    ];
 
     const fetchData = async () => {
       try {
@@ -177,30 +200,41 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
             value: selectedCounties,
           });
         }
-
-        // const requestBody = {
-        //   filters,
-        //   page_number: currentPage,
-        //   page_size,
-        //   sorts: [{ field: sortField, direction: sortDirection }],
-        // };
-
-        // const response = await fetch(
-        //   "https://auction-api-dev.mptrdev.com/auctions",
-        //   {
-        //     method: "POST",
-        //     headers: {
-        //       "Content-Type": "application/json",
-        //     },
-        //     body: JSON.stringify(requestBody),
-        //   }
-        // );
-
-        // if (!response.ok) {
-        //   throw new Error(
-        //     `Network response was not ok: ${response.status} ${response.statusText}`
-        //   );
-        // }
+        const now = new Date();
+        if (currentRound === 1) {
+          filters.push({
+            field: "round_1_start_time",
+            op: "<=",
+            value: formatDate(now),
+          });
+          filters.push({
+            field: "round_1_end_time",
+            op: ">=",
+            value: formatDate(now),
+          });
+        } else if (currentRound === 2) {
+          filters.push({
+            field: "round_2_start_time",
+            op: "<=",
+            value: formatDate(now),
+          });
+          filters.push({
+            field: "round_2_end_time",
+            op: ">=",
+            value: formatDate(now),
+          });
+        } else if (currentRound === 3) {
+          filters.push({
+            field: "round_3_start_time",
+            op: "<=",
+            value: formatDate(now),
+          });
+          filters.push({
+            field: "round_3_end_time",
+            op: ">=",
+            value: formatDate(now),
+          });
+        }
 
         const requestBody = {
           filters,
@@ -250,7 +284,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
         } else {
           console.error("Unknown error:", error);
         }
-        setLoading(false); // Állapot frissítése, ha hiba történik
+        setLoading(false); // state update
       }
     };
 
@@ -263,8 +297,6 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
     currentPage,
     query,
     selectedBuildingType,
-    showOnlineAuctions,
-    showOfflineAuctions,
     selectedClassification,
     auctionType,
     canMoveIn,
@@ -273,7 +305,30 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
     selectedStartingPrice,
     selectedMinimalPrice,
     selectedCounties,
+    currentRound,
   ]); // mount
+
+  const formatDate = (date: Date): string => {
+    const pad = (num: number): string =>
+      num < 10 ? `0${num}` : num.toString();
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+      date.getDate()
+    )}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(
+      date.getSeconds()
+    )}`;
+  };
+
+  const formatDateToHU = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleString("hu-HU", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  };
 
   const handleCountySelectionChange = (
     selectedCounty: string,
@@ -289,37 +344,29 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
   };
 
   const handleSortChange = (field: string) => {
-    // if (field === "post_code_to_settlement") {
-    //   setAuctions(
-    //     [...auctions].sort((a, b) => {
-    //       // parse num
-    //       const postCodeA = parseInt(a.post_code_to_settlement.post_code, 10);
-    //       const postCodeB = parseInt(b.post_code_to_settlement.post_code, 10);
+    let sortKey = field;
 
-    //       // if number
-    //       if (!isNaN(postCodeA) && !isNaN(postCodeB)) {
-    //         return sortDirection === "asc"
-    //           ? postCodeA - postCodeB
-    //           : postCodeB - postCodeA;
-    //       } else {
-    //         return 0;
-    //       }
-    //     })
-    //   );
-    // } else {
-    //   // base sorting
-    //   if (sortField === field) {
-    //     setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    //   } else {
-    //     setSortField(field);
-    //     setSortDirection("asc");
-    //   }
-    // }
-    if (sortField === field) {
+    if (field === "round_end_time") {
+      switch (currentRound) {
+        case 1:
+          sortKey = "round_1_end_time";
+          break;
+        case 2:
+          sortKey = "round_2_end_time";
+          break;
+        case 3:
+          sortKey = "round_3_end_time";
+          break;
+        default:
+          console.error("Invalid round for sorting");
+          return;
+      }
+    }
+
+    if (sortField === sortKey) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-      //console.log(sortDirection);
     } else {
-      setSortField(field);
+      setSortField(sortKey);
       setSortDirection("asc");
     }
   };
@@ -346,7 +393,6 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
 
   const handlePageChange = (newPage: number) => {
     // console.log('New Page:', newPage);
-
     setCurrentPage(newPage);
   };
 
@@ -361,7 +407,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
 
   const handleAuctionTypeChange = (event: ChangeEvent<HTMLInputElement>) => {
     const selectedType = event.target.value;
-    console.log("Selected auction type:", selectedType); // Debugging line
+    //console.log("Selected auction type:", selectedType); // Debugging line
     setAuctionType(selectedType);
   };
 
@@ -381,16 +427,99 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
   };
 
   const filteredAuctions = auctions.map((auction) => {
-    let auctionStatus = "Folyamatos";
+    let auctionStatus = "";
 
-    if (auction.auction_type === "online") {
-      auctionStatus = auction.final_result === null ? "Élő" : "Befejezett";
+    if (auction.auction_type === "offline") {
+      auctionStatus = "Folyamatos";
+    } else {
+      const lastAuctionHistory = auction.last_auction_history;
+
+      if (lastAuctionHistory) {
+        if (lastAuctionHistory.final_result === null) {
+          auctionStatus = "Élő";
+        } else {
+          auctionStatus = "Befejezett";
+        }
+      }
     }
-
-    auctionStatus = JSON.stringify(auction);
 
     return { ...auction, displayStatus: auctionStatus };
   });
+
+  const handleCurrentRoundChange = (
+    event: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    const round = parseInt(event.target.value, 10);
+    setCurrentRound(round);
+    console.log("Selected round:", round);
+  };
+
+  const getRoundEndTime = (auction: Auction) => {
+    if (currentRound === 1) return formatDateToHU(auction.round_1_end_time);
+    if (currentRound === 2) return formatDateToHU(auction.round_2_end_time);
+    if (currentRound === 3) return formatDateToHU(auction.round_3_end_time);
+    return "";
+  };
+
+  const getRoundMinPrice = (auction: Auction) => {
+    const formatPrice = (price: number | null) => {
+      return price ? price.toLocaleString() + " Ft" : "N/A";
+    };
+
+    switch (currentRound) {
+      case 1:
+        return formatPrice(auction.round_1_min_price);
+      case 2:
+        return formatPrice(auction.round_2_min_price);
+      case 3:
+        return formatPrice(auction.round_3_min_price);
+      default:
+        return "";
+    }
+  };
+
+  // const getRoundName = (currentRound: number) => {
+  //   switch (currentRound) {
+  //     case 1:
+  //       return "Első kör";
+  //     case 2:
+  //       return "Második kör";
+  //     case 3:
+  //       return "Harmadik kör";
+  //     default:
+  //       return "N/A";
+  //   }
+  // };
+
+  const getRoundDisplay = (currentRound: any) => {
+    if (currentRound === "1") {
+      const firstResult = {
+        name: "Első kör",
+        class: "bg-blue-200 text-blue-800",
+      };
+      return firstResult;
+    } else if (currentRound === "2") {
+      const secondResult = {
+        name: "Második kör",
+        class: "bg-green-200 text-green-800",
+      };
+      return secondResult;
+    } else if (currentRound === "3") {
+      const thirdResult = {
+        name: "Harmadik kör",
+        class: "bg-indigo-200 text-indigo-800",
+      };
+      return thirdResult;
+    } else if (currentRound === null) {
+      const nullResult = {
+        name: "Nincs kör",
+        class: "bg-gray-200 text-gray-800",
+      };
+      return nullResult;
+    } else {
+      return { name: "Lejárt aukció", class: "bg-red-200 text-red-800" };
+    }
+  };
 
   return (
     <div
@@ -458,24 +587,17 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                     selected={auctionType}
                     onChange={handleAuctionTypeChange}
                   />
+                  {auctionType === "online" && (
+                    <div className="mt-5">
+                      <CurrentRound onChange={handleCurrentRoundChange} />
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="relative w-full lg:mx-6 focus-within:text-teal-500">
                 <div className="px-4 py-3 mb-8 bg-white rounded-lg shadow-md dark:bg-gray-800 h-full">
                   <StartingPriceFilter onChange={handleStartingPriceChange} />
                   <MinimalPriceFilter onChange={handleMinimalPriceChange} />
-                  {/* <label className="block mt-4 text-sm">
-                    <span className="text-gray-700 dark:text-gray-400">
-                      Lejárat
-                    </span>
-                    <select className="primary-select">
-                      <option>Option 1</option>
-                      <option>Option 2</option>
-                      <option>Option 3</option>
-                      <option>Option 4</option>
-                      <option>Option 5</option>
-                    </select>
-                  </label> */}
                   <h1 className="text-xl font-bold mt-5">
                     Magyarországi vármegyék
                   </h1>
@@ -495,392 +617,304 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
             />
           </div>
 
-          <div className="w-full overflow-x-auto rounded-lg">
-            <table className="w-full whitespace-no-wrap">
-              <thead>
-                <tr className="table-head">
-                  <th className="px-4 py-3 min-w-[160px]">
-                    <span>{props.post_code_to_settlement}</span>
-                    {/* <button
-                      title="Rendezés"
-                      className="ml-2"
-                      onClick={() => handleSortChange('post_code_to_settlement')}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          fill="#fff"
-                          d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
-                        />
-                      </svg>
-                    </button> */}
-                  </th>
-
-                  <th className="px-4 py-3 min-w-[160px]">
-                    <span className="relative -top-[5px]">{props.address}</span>
-                    <button
-                      title="Rendezés"
-                      className="ml-2"
-                      onClick={() => handleSortChange("address_short")}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          fill="#fff"
-                          d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
-                        />
-                      </svg>
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 min-w-[160px]">
-                    <span className="relative -top-[5px]">
-                      {props.starting_price}
-                    </span>
-                    <button
-                      title="Rendezés"
-                      className="ml-2"
-                      onClick={() => handleSortChange("starting_price")}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          fill="#fff"
-                          d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
-                        />
-                      </svg>
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 min-w-[160px]">
-                    <span className="relative -top-[5px]">
-                      {props.minimal_price}
-                    </span>
-                    <button
-                      title="Rendezés"
-                      className="ml-2"
-                      onClick={() => handleSortChange("minimal_price")}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          fill="#fff"
-                          d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
-                        />
-                      </svg>
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 min-w-[160px]">
-                    <span>{props.auction_type}</span>
-                  </th>
-                  <th className="px-4 py-3 min-w-[160px]">
-                    <span className="relative -top-[5px]">
-                      {props.bidding_ladder}
-                    </span>
-                    <button
-                      title="Rendezés"
-                      className="ml-2"
-                      onClick={() => handleSortChange("bidding_ladder")}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          fill="#fff"
-                          d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
-                        />
-                      </svg>
-                    </button>
-                  </th>
-                  <th className="px-4 py-3 min-w-[160px]">
-                    <span className="relative -top-[5px]">
-                      {props.online_auction_planned_end_time}
-                    </span>
-                    <button
-                      title="Rendezés"
-                      className="ml-2"
-                      onClick={() =>
-                        handleSortChange("online_auction_planned_end_time")
-                      }
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          fill="#fff"
-                          d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
-                        />
-                      </svg>
-                    </button>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y dark:divide-gray-700 dark:bg-gray-800">
-                {filteredAuctions.map((auction) => (
-                  <tr
-                    key={auction.id}
-                    className="text-gray-700 dark:text-gray-400"
-                  >
-                    <td className="px-4 py-3 text-sm">
-                      <p className="font-semibold">
-                        {auction.post_code_to_settlement.post_code}
-                      </p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href="/dashboard/auctions/[id]"
-                        as={`/dashboard/auctions/${auction.id}`}
-                        passHref
-                      >
-                        <div className="flex items-center text-sm">
-                          <div className="relative hidden w-14 h-14 mr-3 rounded-full md:block">
-                            <img
-                              className="object-cover w-full h-full rounded-full"
-                              src={
-                                "https://auction-api-dev.mptrdev.com/download_file?folder=" +
-                                (auction.auction_type === "online"
-                                  ? "Online_auctions"
-                                  : "Offline_auctions") +
-                                "&file=" +
-                                auction.link_to_first_image +
-                                "&download=0"
-                              }
-                              alt=""
-                              loading="lazy"
-                            />
-                            <div
-                              className="absolute inset-0 rounded-full shadow-inner"
-                              aria-hidden="true"
-                            ></div>
-                          </div>
-                          <div>
-                            <p className="font-semibold">
-                              {auction.address_short}
-                            </p>
-                          </div>
-                        </div>
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 text-sm">{`${auction.starting_price.toLocaleString()} Ft`}</td>
-
-                    <td className="px-4 py-3 text-sm">{`${auction.minimal_price.toLocaleString()} Ft`}</td>
-                    <td className="px-4 py-3 text-xs">
-                      <span
-                        className={`px-2 py-1 font-semibold leading-tight rounded-full ${
-                          auction.displayStatus === "Folyamatos"
-                            ? "bg-blue-300 text-blue-700"
-                            : auction.displayStatus === "Élő"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-300 text-red-700"
-                        }`}
-                      >
-                        {auction.displayStatus}
+          <div className="w-full overflow-x-auto relative overflow-auto h-screen max-h-96 lg:max-h-[84rem] rounded-lg scroller scrollbar-gutter-stable">
+            {filteredAuctions.length > 0 ? (
+              <table className="w-full whitespace-no-wrap">
+                <thead>
+                  <tr className="table-head sticky top-0 z-20">
+                    <th className="px-4 py-3 sticky top-0">
+                      <span>{props.post_code_to_settlement}</span>
+                    </th>
+                    <th className="px-4 py-3 min-w-[265px] sticky top-0">
+                      <span className="relative -top-[5px]">
+                        {props.address}
                       </span>
-                      
-                      {canMoveIn && auction.auction_type !== "offline" && (
-                        <span className="px-2 text-xs py-1 font-semibold leading-tight rounded-full dark:text-green-100 ml-2 bg-teal-600 text-white">
-                          Beköltözhető
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {`${auction.bidding_ladder.toLocaleString()} Ft`}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      {new Date(
-                        auction.online_auction_planned_end_time
-                      ).toLocaleString("hu-HU", {
-                        year: "numeric",
-                        month: "2-digit",
-                        day: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: false,
-                      })}
-                    </td>
+                      <button
+                        title="Rendezés"
+                        className="ml-2"
+                        onClick={() => handleSortChange("address_short")}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            fill="#fff"
+                            d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
+                          />
+                        </svg>
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 min-w-[160px] sticky top-0">
+                      <span className="relative -top-[5px]">
+                        {props.starting_price}
+                      </span>
+                      <button
+                        title="Rendezés"
+                        className="ml-2"
+                        onClick={() => handleSortChange("starting_price")}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            fill="#fff"
+                            d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
+                          />
+                        </svg>
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 min-w-[160px] sticky top-0">
+                      <span className="relative -top-[5px]">
+                        {props.minimal_price}
+                      </span>
+                      <button
+                        title="Rendezés"
+                        className="ml-2"
+                        onClick={() => handleSortChange("minimal_price")}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            fill="#fff"
+                            d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
+                          />
+                        </svg>
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 min-w-[100px] sticky top-0">
+                      <span>{props.auction_type}</span>
+                    </th>
+                    <th className="px-4 py-3 min-w-[160px] sticky top-0">
+                      <span className="relative -top-[5px]">
+                        {props.bidding_ladder}
+                      </span>
+                      <button
+                        title="Rendezés"
+                        className="ml-2"
+                        onClick={() => handleSortChange("bidding_ladder")}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            fill="#fff"
+                            d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
+                          />
+                        </svg>
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 min-w-[160px] sticky top-0">
+                      {props.highest_bid}
+                    </th>
+                    <th className="px-4 py-3 min-w-[160px] sticky top-0">
+                      {props.current_round}
+                    </th>
+                    {[1, 2, 3].includes(currentRound) ? (
+                      <>
+                        <th className="px-4 py-3 min-w-[160px] sticky top-0">
+                          {props.round_min_price}
+                        </th>
+                        <th className="px-4 py-3 min-w-[160px] sticky top-0">
+                          <span className="relative -top-[5px]">
+                            {props.round_end_time}
+                          </span>
+                          <button
+                            title="Rendezés"
+                            className="ml-2"
+                            onClick={() => handleSortChange("round_end_time")}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                fill="#fff"
+                                d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
+                              />
+                            </svg>
+                          </button>
+                        </th>
+                      </>
+                    ) : (
+                      <>
+                        <th className="px-4 py-3 min-w-[160px] sticky top-0">
+                          <span className="relative -top-[5px]">
+                            {props.online_auction_planned_end_time}
+                          </span>
+                          <button
+                            title="Rendezés"
+                            className="ml-2"
+                            onClick={() =>
+                              handleSortChange(
+                                "online_auction_planned_end_time"
+                              )
+                            }
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                fill="#fff"
+                                d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
+                              />
+                            </svg>
+                          </button>
+                        </th>
+                      </>
+                    )}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            {filteredAuctions.length > 0 ? ( // Check if there are items to display
-              <div className="flex justify-end mt-4">
-                <span className="flex col-span-4 mt-2 sm:mt-auto sm:justify-end">
-                  <nav aria-label="Table navigation">
-                    <ul className="inline-flex items-center">
-                      {/* left arrow */}
-                      {currentPage > 1 && (
-                        <li>
-                          <button
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            className="px-3 py-1 rounded-md focus:outline-none focus:shadow-outline-teal"
-                          >
-                            <svg
-                              aria-hidden="true"
-                              className="w-4 h-4 fill-current"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-                                clipRule="evenodd"
-                                fillRule="evenodd"
-                              ></path>
-                            </svg>
-                          </button>
-                        </li>
-                      )}
+                </thead>
+                <tbody className="bg-white divide-y dark:divide-gray-700 dark:bg-gray-800">
+                  {filteredAuctions.map((auction) => (
+                    <tr
+                      key={auction.id}
+                      className="text-gray-700 dark:text-gray-400"
+                    >
+                      <td className="px-4 py-3 text-sm">
+                        <p className="font-semibold">
+                          {auction.post_code_to_settlement.post_code}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link
+                          href="/dashboard/auctions/[id]"
+                          as={`/dashboard/auctions/${auction.id}`}
+                          passHref
+                        >
+                          <div className="flex items-center text-sm">
+                            <div className="relative hidden w-14 h-14 min-w-[50px] mr-3 rounded-full md:block">
+                              <img
+                                className="object-cover w-full h-full rounded-full"
+                                src={
+                                  "https://auction-api-dev.mptrdev.com/download_file?folder=" +
+                                  (auction.auction_type === "online"
+                                    ? "Online_auctions"
+                                    : "Offline_auctions") +
+                                  "&file=" +
+                                  auction.link_to_first_image +
+                                  "&download=0"
+                                }
+                                alt=""
+                                loading="lazy"
+                              />
+                              <div
+                                className="absolute inset-0 rounded-full shadow-inner"
+                                aria-hidden="true"
+                              ></div>
+                            </div>
+                            <div>
+                              <p className="font-semibold">
+                                {auction.address_short}
+                              </p>
+                            </div>
+                          </div>
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-sm">{`${auction.starting_price.toLocaleString()} Ft`}</td>
 
-                      {/* Pagination */}
-                      {Array.from({ length: totalPages }, (_, index) => {
-                        // first page
-                        if (index === 0) {
-                          return (
-                            <li key={index}>
-                              <button
-                                onClick={() => handlePageChange(index + 1)}
-                                className={`px-3 py-1 rounded-md focus:outline-none focus:shadow-outline-teal ${
-                                  currentPage === index + 1
-                                    ? "text-white transition-colors duration-150 bg-teal-700 border border-r-0 border-teal-700 rounded-md"
-                                    : ""
-                                }`}
-                              >
-                                {index + 1}
-                              </button>
-                            </li>
-                          );
-                        }
-                        // first 3 page
-                        else if (
-                          currentPage <= 3 &&
-                          (index + 1 <= 5 || index + 1 === totalPages)
-                        ) {
-                          return (
-                            <li key={index}>
-                              <button
-                                onClick={() => handlePageChange(index + 1)}
-                                className={`px-3 py-1 rounded-md focus:outline-none focus:shadow-outline-teal ${
-                                  currentPage === index + 1
-                                    ? "text-white transition-colors duration-150 bg-teal-700 border border-r-0 border-teal-700 rounded-md"
-                                    : ""
-                                }`}
-                              >
-                                {index + 1}
-                              </button>
-                            </li>
-                          );
-                        }
-                        // last 3 page
-                        else if (
-                          currentPage >= totalPages - 2 &&
-                          (index + 1 >= totalPages - 4 || index === 0)
-                        ) {
-                          return (
-                            <li key={index}>
-                              <button
-                                onClick={() => handlePageChange(index + 1)}
-                                className={`px-3 py-1 rounded-md focus:outline-none focus:shadow-outline-teal ${
-                                  currentPage === index + 1
-                                    ? "text-white transition-colors duration-150 bg-teal-700 border border-r-0 border-teal-700 rounded-md"
-                                    : ""
-                                }`}
-                              >
-                                {index + 1}
-                              </button>
-                            </li>
-                          );
-                        }
-                        // current page and surrounding pages
-                        else if (
-                          index + 1 >= currentPage - 1 &&
-                          index + 1 <= currentPage + 1
-                        ) {
-                          return (
-                            <li key={index}>
-                              <button
-                                onClick={() => handlePageChange(index + 1)}
-                                className={`px-3 py-1 rounded-md focus:outline-none focus:shadow-outline-teal ${
-                                  currentPage === index + 1
-                                    ? "text-white transition-colors duration-150 bg-teal-700 border border-r-0 border-teal-700 rounded-md"
-                                    : ""
-                                }`}
-                              >
-                                {index + 1}
-                              </button>
-                            </li>
-                          );
-                        }
-                        // last page
-                        else if (index === totalPages - 1) {
-                          return (
-                            <li key={index}>
-                              <button
-                                onClick={() => handlePageChange(index + 1)}
-                                className={`px-3 py-1 rounded-md focus:outline-none focus:shadow-outline-teal ${
-                                  currentPage === index + 1
-                                    ? "text-white transition-colors duration-150 bg-teal-700 border border-r-0 border-teal-700 rounded-md"
-                                    : ""
-                                }`}
-                              >
-                                {index + 1}
-                              </button>
-                            </li>
-                          );
-                        }
-                        // dots
-                        else if (index === 1 || index === totalPages - 2) {
-                          return (
-                            <li key={index}>
-                              <span className="px-3 py-1">...</span>
-                            </li>
-                          );
-                        }
-                        return null;
-                      })}
+                      <td className="px-4 py-3 text-sm">{`${auction.minimal_price.toLocaleString()} Ft`}</td>
+                      <td className="px-4 py-3 text-xs">
+                        <span
+                          className={`px-2 py-1 font-semibold leading-tight rounded-full ${
+                            auction.displayStatus === "Folyamatos"
+                              ? "bg-blue-300 text-blue-700"
+                              : auction.displayStatus === "Élő"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-300 text-red-700"
+                          }`}
+                        >
+                          {auction.displayStatus}
+                          {/* {JSON.stringify(auction)} */}
+                        </span>
+                        {canMoveIn && auction.auction_type !== "offline" && (
+                          <span className="px-2 text-xs py-1 font-semibold leading-tight rounded-full dark:text-green-100 ml-2 bg-teal-600 text-white">
+                            Beköltözhető
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className="border-b border-blue-500 pb-2">
+                          {`${auction.bidding_ladder.toLocaleString()} Ft`}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {auction.last_auction_history &&
+                        auction.last_auction_history.highest_bid ? (
+                          <span className="text-teal-500 dark:text-teal-400 font-bold">
+                            {auction.last_auction_history.highest_bid.toLocaleString()}{" "}
+                            Ft
+                          </span>
+                        ) : (
+                          <span className="text-red-500 dark:text-gray-400 font-bold">
+                            Nincs ajánlat
+                          </span>
+                        )}
+                      </td>
 
-                      {/* right arrow */}
-                      {currentPage < totalPages && (
-                        <li>
-                          <button
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            className="px-3 py-1 rounded-md focus:outline-none focus:shadow-outline-teal"
-                          >
-                            <svg
-                              className="w-4 h-4 fill-current"
-                              aria-hidden="true"
-                              viewBox="0 0 20 20"
+                      <td>
+                        <p
+                          className={`px-2 py-1 font-semibold leading-tight rounded-full text-sm mt-3 w-fit ${
+                            getRoundDisplay(auction.current_round).class
+                          }`}
+                        >
+                          {getRoundDisplay(auction.current_round).name}
+                        </p>
+                      </td>
+                      {auction.auction_type === "online" &&
+                      auction.last_auction_history.final_result === null &&
+                      [1, 2, 3].includes(currentRound) ? (
+                        <>
+                          <td className="">
+                            <p
+                              className={`px-2 py-1 font-semibold leading-tight rounded-full text-sm mt-3 w-fit ${
+                                getRoundDisplay(auction.current_round).class
+                              }`}
                             >
-                              <path
-                                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                                clipRule="evenodd"
-                                fillRule="evenodd"
-                              ></path>
-                            </svg>
-                          </button>
-                        </li>
+                              {getRoundMinPrice(auction)}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            {getRoundEndTime(auction)}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-4 py-3 text-sm">
+                            {new Date(
+                              auction.online_auction_planned_end_time
+                            ).toLocaleString("hu-HU", {
+                              year: "numeric",
+                              month: "2-digit",
+                              day: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hour12: false,
+                            })}
+                          </td>
+                        </>
                       )}
-                    </ul>
-                  </nav>
-                </span>
-              </div>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             ) : (
               <h3 className="pt-5 text-3xl font-bold text-center w-full">
                 Nem található online árverés! Próbáld meg más keresési
@@ -888,6 +922,11 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
               </h3>
             )}
           </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
         </div>
       )}
     </div>

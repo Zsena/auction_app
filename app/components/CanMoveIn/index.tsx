@@ -12,7 +12,7 @@ const CanMoveIn: React.FC<CanMoveInProps> = (props: CanMoveInProps) => {
     <label className="block mt-4 text-sm">
       <span className="text-gray-700 dark:text-gray-400">Beköltözhető</span>
       <select
-        className="primary-select"
+        className="primary-select mt-2"
         value={props.value !== null ? props.value.toString() : ""}
         onChange={props.onChange}
       >

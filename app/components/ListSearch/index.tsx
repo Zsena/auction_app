@@ -10,8 +10,8 @@ interface ListSearchProps {
 
 const ListSearch: React.FC<ListSearchProps> = (props: ListSearchProps) => {
   return (
-    <div className="flex justify-between py-6">
-      <div className="relative w-full mr-6 focus-within:text-teal-500">
+    <div className="flex justify-between py-2">
+      <div className="relative w-full mr-2 focus-within:text-teal-500">
         <div className="absolute inset-y-0 flex items-center pl-2">
           <svg
             className="w-4 h-4"
