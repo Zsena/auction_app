@@ -7,8 +7,8 @@ interface County {
   }
   
 interface CountyCheckboxListProps {
-  selectedCounties: string[]; // Kiválasztott megyék nevei
-  onCountySelectionChange: (name: string, isChecked: boolean) => void; // Módosítva: név alapú
+  selectedCounties: string[];  // Selected county names
+  onCountySelectionChange: (name: string, isChecked: boolean) => void; // Modified: based on name
 }
 
 const counties: County[] = [
@@ -31,25 +31,37 @@ const counties: County[] = [
   { id: 17, name: "Vas", checked: false },
   { id: 18, name: "Veszprém", checked: false },
   { id: 19, name: "Zala", checked: false },
-  { id: 20, name: "Budapest", checked: false },
+  { id: 20, name: "Főváros", checked: false },
 ];
 
+
+
 const CountyCheckboxList: React.FC<CountyCheckboxListProps> = ({ selectedCounties, onCountySelectionChange }) => {
-    return (
-      <div className="flex flex-wrap gap-4 p-4">
-        {counties.map((county) => (
+  const handleCheckboxChange = (countyName: string, isChecked: boolean) => {
+      const nameToSend = countyName === "Budapest" ? "Főváros" : countyName;
+      onCountySelectionChange(nameToSend, isChecked);
+  };
+
+  return (
+    <div className="flex flex-wrap gap-4 p-4">
+      {counties.map((county) => {
+        const displayName = county.name === "Főváros" ? "Budapest" : county.name;
+        const isChecked = selectedCounties.includes(county.name);
+
+        return (
           <label key={county.id} className="inline-flex items-center space-x-2">
             <input
               type="checkbox"
-              checked={selectedCounties.includes(county.name)}
-              onChange={(e) => onCountySelectionChange(county.name, e.target.checked)}
+              checked={isChecked}
+              onChange={(e) => handleCheckboxChange(displayName, e.target.checked)}
               className="form-checkbox h-5 w-5 text-teal-600"
             />
-            <span className="text-gray-700 dark:text-gray-400">{county.name}</span>
+            <span className="text-gray-700 dark:text-gray-400">{displayName}</span>
           </label>
-        ))}
-      </div>
-    );
-  };
+        );
+      })}
+    </div>
+  );
+};
 
 export default CountyCheckboxList;

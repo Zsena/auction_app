@@ -24,6 +24,7 @@ interface TableHead {
   round_min_price: string;
   online_auction_planned_end_time: string;
   highest_bid: string;
+  execution_number: string;
 }
 
 interface LocalBuildingType {
@@ -39,9 +40,7 @@ interface LastAuctionHistory {
 }
 
 interface Auction {
-  // final_result: null;
   last_auction_history: LastAuctionHistory;
-  // is_current: boolean;
   id: number;
   address: string;
   auction_advance: number;
@@ -72,6 +71,7 @@ interface Auction {
   round_3_start_time: string;
   round_3_end_time: string;
   current_round: any;
+  execution_number: string;
 }
 
 interface StartingPriceRange {
@@ -90,6 +90,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [query, setQuery] = useState("");
+  const [executionNumberQuery, setExecutionNumberQuery] = useState("");
   const [selectedBuildingType, setSelectedBuildingType] = useState<string>("");
   const [selectedClassification, setSelectedClassification] =
     useState<string>("");
@@ -118,6 +119,12 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
             field: "address_short",
             op: "like",
             value: "%" + query + "%",
+          });
+        if (executionNumberQuery)
+          filters.push({
+            field: "execution_number",
+            op: "like",
+            value: "%" + executionNumberQuery + "%",
           });
         if (selectedBuildingType)
           filters.push({
@@ -261,7 +268,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
         }
 
         const data = await response.json();
-        //console.log(data);
+        console.log(data);
 
         if (isMounted) {
           const { auctions, total_count } = data || {
@@ -296,6 +303,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
   }, [
     currentPage,
     query,
+    executionNumberQuery,
     selectedBuildingType,
     selectedClassification,
     auctionType,
@@ -398,6 +406,10 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
 
   const searchValue = (event: ChangeEvent<HTMLInputElement>) => {
     setQuery(event.target.value);
+  };
+
+  const searchExecutionNumber = (event: ChangeEvent<HTMLInputElement>) => {
+    setExecutionNumberQuery(event.target.value);
   };
 
   const handleCanMoveInChange = (event: ChangeEvent<HTMLSelectElement>) => {
@@ -548,7 +560,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                       Település
                     </span>
                     <ListSearch
-                      placeholderValue="Település"
+                      placeholderValue="Keress település nevében"
                       value={query}
                       onChange={searchValue}
                     />
@@ -611,7 +623,12 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
           </Collapsible>
           <div className="flex justify-end flex-1">
             <ListSearch
-              placeholderValue="Gyorskeresés"
+              placeholderValue="Ügyszám kereső"
+              value={executionNumberQuery}
+              onChange={searchExecutionNumber}
+            />
+            <ListSearch
+              placeholderValue="Település gyorskereső"
               value={query}
               onChange={searchValue}
             />
@@ -622,6 +639,28 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
               <table className="w-full whitespace-no-wrap">
                 <thead>
                   <tr className="table-head sticky top-0 z-20">
+                    <th className="px-4 py-3 sticky top-0">
+                      <span className="relative -top-[5px]">
+                        {props.execution_number}
+                      </span>
+                      <button
+                        title="Rendezés"
+                        className="ml-2"
+                        onClick={() => handleSortChange("execution_number")}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            fill="#fff"
+                            d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
+                          />
+                        </svg>
+                      </button>
+                    </th>
                     <th className="px-4 py-3 sticky top-0">
                       <span>{props.post_code_to_settlement}</span>
                     </th>
@@ -788,6 +827,11 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                       key={auction.id}
                       className="text-gray-700 dark:text-gray-400"
                     >
+                      <td className="px-4 py-3 text-sm">
+                        <p className="font-semibold">
+                          {auction.execution_number}
+                        </p>
+                      </td>
                       <td className="px-4 py-3 text-sm">
                         <p className="font-semibold">
                           {auction.post_code_to_settlement.post_code}

@@ -25,6 +25,7 @@ const Home: React.FC = () => {
         round_min_price="Kör min. értéke"
         online_auction_planned_end_time="Árverés vége"
         highest_bid="Legmagasabb ajánlat"
+        execution_number="Ügyszám"
       />
     </section>
   );
