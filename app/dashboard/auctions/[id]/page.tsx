@@ -248,7 +248,7 @@ const AuctionDetailsPage: React.FC = () => {
                       />
                       <div className="w-2/3">
                         <div className="font-medium uppercase">
-                          Online árverés kezdete:
+                          Árverés kezdete:
                         </div>
                         <div className="font-light">
                           {new Date(
@@ -271,7 +271,7 @@ const AuctionDetailsPage: React.FC = () => {
                       />
                       <div className="w-2/3">
                         <div className="font-medium uppercase">
-                          Online árverés tervezett vége:
+                          Árverés tervezett vége:
                         </div>
                         <div className="font-light">
                           {new Date(
@@ -324,7 +324,7 @@ const AuctionDetailsPage: React.FC = () => {
                       className="w-5 h-5 lg:w-10 lg:h-10 text-red-400"
                     />
                     <div className="w-2/3">
-                      <div className="font-medium uppercase">Végső ár</div>
+                      <div className="font-medium uppercase">Nyertes licit</div>
                       {auctionData.auction.auction_histories.map(
                         (history, index) => (
                           <div key={index} className="font-light">

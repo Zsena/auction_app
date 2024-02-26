@@ -29,10 +29,10 @@ const Header = () => {
     <header className="z-10 py-4 bg-white shadow-md dark:bg-gray-800">
       <div className="container flex items-center justify-between lg:justify-end h-full px-6 mx-auto text-teal-700 dark:text-teal-300">
         {/* <!-- Mobile hamburger --> */}
-        <div className="lg:hidden">
+        <div>
           <ToggleNav isOpen={isMenuOpen} toggleMenu={toggleMenu} />
           {isMenuOpen && (
-            <aside className="z-20 fixed top-0 left-0 w-full h-full overflow-y-auto bg-white dark:bg-gray-800">
+            <aside className="z-20 fixed top-0 left-0 w-64 h-full overflow-y-auto bg-white dark:bg-gray-800">
               <div className="p-4">
                 <ToggleNav isOpen={isMenuOpen} toggleMenu={toggleMenu} />
                 <NavList />
