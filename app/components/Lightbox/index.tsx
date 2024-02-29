@@ -35,7 +35,7 @@ const Lightbox: React.FC<LightboxProps> = ({
         <img
           src={src}
           alt={alt || "Lightbox image"}
-          className="block w-full mx-auto rounded-xl"
+          className="block w-full mx-auto rounded-xl max-h-[600px] object-contain"
         />
         <button
           className="absolute -top-20 right-5 md:right-0 rounded-full text-black bg-white text-3xl py-2 px-4"

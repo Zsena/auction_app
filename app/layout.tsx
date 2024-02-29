@@ -9,7 +9,7 @@ import MobileNav from "./components/NavBar";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Auction app dashboard",
+  title: "Ingatlan Árverések Magyarországon",
   description: "",
 };
 
@@ -27,7 +27,7 @@ export default function RootLayout({
               <MobileNav />
               <section className="flex flex-col flex-1 w-full">
                 <MainNav />
-                <div className="w-full px-6 mx-auto grid">{children}</div>
+                <div className="w-full px-2 lg:px-6 mx-auto grid">{children}</div>
               </section>
             </div>
             <Footer />
