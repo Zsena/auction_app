@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect, useState, ChangeEvent } from "react";
 import ListSearch from "../ListSearch";
 import BuildingType from "../BuildingType";
@@ -25,6 +27,8 @@ interface TableHead {
   online_auction_planned_end_time: string;
   highest_bid: string;
   execution_number: string;
+  scraped_at: string;
+  number_of_bids: string;
 }
 
 interface LocalBuildingType {
@@ -37,20 +41,23 @@ interface LastAuctionHistory {
   final_result: null | string;
   is_current: boolean;
   highest_bid: number | null;
+  number_of_bids: number;
+}
+
+interface Bidding {
+  bid_date: string;
 }
 
 interface Auction {
   last_auction_history: LastAuctionHistory;
   id: number;
   address: string;
-  auction_advance: number;
   starting_price: number;
   minimal_price: number;
   link_to_first_image: string;
-  online_auction_strat_time: string;
+  biddings: Bidding[];
   online_auction_planned_end_time: string;
   city: string;
-  parcel_number: number;
   auction_type: string;
   bidding_ladder: number;
   building_types: LocalBuildingType[];
@@ -62,8 +69,6 @@ interface Auction {
   round_1_min_price: number;
   round_2_min_price: number;
   round_3_min_price: number;
-  round_2_discount: number;
-  round_3_discount: number;
   round_1_start_time: string;
   round_1_end_time: string;
   round_2_start_time: string;
@@ -72,6 +77,7 @@ interface Auction {
   round_3_end_time: string;
   current_round: any;
   execution_number: string;
+  scraped_at: string;
 }
 
 interface StartingPriceRange {
@@ -107,9 +113,17 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
     useState<MinimalPriceRange | null>(null);
   const [selectedCounties, setSelectedCounties] = useState<string[]>([]);
   const [currentRound, setCurrentRound] = useState(0);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 992);
 
   useEffect(() => {
     let isMounted = true;
+
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 992);
+    };
+    window.addEventListener("resize", handleResize);
+
+    handleResize();
 
     const fetchData = async () => {
       try {
@@ -207,7 +221,9 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
             value: selectedCounties,
           });
         }
+
         const now = new Date();
+
         if (currentRound === 1) {
           filters.push({
             field: "round_1_start_time",
@@ -261,14 +277,13 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
           }
         );
 
+        const data = await response.json();
+
         if (!response.ok) {
           throw new Error(
             `Network response was not ok: ${response.status} ${response.statusText}`
           );
         }
-
-        const data = await response.json();
-        console.log(data);
 
         if (isMounted) {
           const { auctions, total_count } = data || {
@@ -298,6 +313,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
     fetchData();
 
     return () => {
+      window.removeEventListener('resize', handleResize);
       isMounted = false;
     };
   }, [
@@ -375,7 +391,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
       setSortField(sortKey);
-      setSortDirection("asc");
+      setSortDirection("desc");
     }
   };
 
@@ -400,7 +416,6 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
   };
 
   const handlePageChange = (newPage: number) => {
-    // console.log('New Page:', newPage);
     setCurrentPage(newPage);
   };
 
@@ -419,7 +434,6 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
 
   const handleAuctionTypeChange = (event: ChangeEvent<HTMLInputElement>) => {
     const selectedType = event.target.value;
-    //console.log("Selected auction type:", selectedType); // Debugging line
     setAuctionType(selectedType);
   };
 
@@ -446,12 +460,10 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
     } else {
       const lastAuctionHistory = auction.last_auction_history;
 
-      if (lastAuctionHistory) {
-        if (lastAuctionHistory.final_result === null) {
-          auctionStatus = "Élő";
-        } else {
-          auctionStatus = "Befejezett";
-        }
+      if (lastAuctionHistory && lastAuctionHistory.final_result === null) {
+        auctionStatus = "Élő";
+      } else {
+        auctionStatus = "Befejezett";
       }
     }
 
@@ -463,73 +475,141 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
   ) => {
     const round = parseInt(event.target.value, 10);
     setCurrentRound(round);
-    console.log("Selected round:", round);
   };
 
-  const getRoundEndTime = (auction: Auction) => {
-    if (currentRound === 1) return formatDateToHU(auction.round_1_end_time);
-    if (currentRound === 2) return formatDateToHU(auction.round_2_end_time);
-    if (currentRound === 3) return formatDateToHU(auction.round_3_end_time);
-    return "";
+  const getAuctionEndTimeStyled = (
+    auction: Auction
+  ): { endTime: string; styleClass: string } => {
+    // Default: the scheduled end of the auction if there are no bids
+    let currentRoundEndTime = auction.online_auction_planned_end_time;
+    let roundEndText = "Tervezett vége"; // if there are no bids
+    let styleClass = "bg-gray-200 text-gray-800 rounded-full text-center p-2"; // Default style if there are no bids
+
+    if (auction.biddings.length > 0) {
+      // If there are bids, we will decide according to the following logic
+      const lastBid = auction.biddings[auction.biddings.length - 1];
+      const lastBidDate = new Date(lastBid.bid_date);
+      const round1EndDate = new Date(auction.round_1_end_time);
+      const round2EndDate = new Date(auction.round_2_end_time);
+
+      if (lastBidDate <= round1EndDate) {
+        currentRoundEndTime = auction.round_2_end_time;
+        roundEndText = "Első szakasz vége";
+        styleClass = "bg-blue-200 text-blue-800 rounded-full text-center p-2";
+      } else if (lastBidDate <= round2EndDate) {
+        currentRoundEndTime = auction.round_3_end_time;
+        roundEndText = "Második szakasz vége";
+        styleClass = "bg-green-200 text-green-800 rounded-full text-center p-2";
+      } else {
+        // The third stage is over if the bids have passed the second stage
+        roundEndText = "Harmadik szakasz vége";
+        styleClass =
+          "bg-indigo-200 text-indigo-800 rounded-full text-center p-2";
+      }
+    }
+
+    return {
+      endTime: `${formatDateToHU(currentRoundEndTime)} (${roundEndText})`,
+      styleClass,
+    };
   };
 
   const getRoundMinPrice = (auction: Auction) => {
-    const formatPrice = (price: number | null) => {
-      return price ? price.toLocaleString() + " Ft" : "N/A";
+    const formatPrice = (price: number) => {
+      return price.toLocaleString() + " Ft";
     };
 
-    switch (currentRound) {
-      case 1:
+    if (
+      auction.current_round === "Lejárt aukció" &&
+      auction.last_auction_history.final_result === null
+    ) {
+      return formatPrice(0);
+    }
+
+    switch (auction.current_round) {
+      case "1":
         return formatPrice(auction.round_1_min_price);
-      case 2:
+      case "2":
         return formatPrice(auction.round_2_min_price);
-      case 3:
+      case "3":
         return formatPrice(auction.round_3_min_price);
       default:
-        return "";
+        return formatPrice(0);
     }
   };
-
-  // const getRoundName = (currentRound: number) => {
-  //   switch (currentRound) {
-  //     case 1:
-  //       return "Első kör";
-  //     case 2:
-  //       return "Második kör";
-  //     case 3:
-  //       return "Harmadik kör";
-  //     default:
-  //       return "N/A";
-  //   }
-  // };
 
   const getRoundDisplay = (currentRound: any) => {
     if (currentRound === "1") {
       const firstResult = {
-        name: "Első kör",
+        name: "Első szakasz",
         class: "bg-blue-200 text-blue-800",
       };
       return firstResult;
     } else if (currentRound === "2") {
       const secondResult = {
-        name: "Második kör",
+        name: "Második szakasz",
         class: "bg-green-200 text-green-800",
       };
       return secondResult;
     } else if (currentRound === "3") {
       const thirdResult = {
-        name: "Harmadik kör",
+        name: "Harmadik szakasz",
         class: "bg-indigo-200 text-indigo-800",
       };
       return thirdResult;
     } else if (currentRound === null) {
       const nullResult = {
-        name: "Nincs kör",
+        name: "Folyamatos",
         class: "bg-gray-200 text-gray-800",
       };
       return nullResult;
+    } else if (currentRound === "El nem kezdődött aukció") {
+      const fouthResult = {
+        name: "El nem kezdődött",
+        class: "bg-gray-200 text-gray-800",
+      };
+      return fouthResult;
     } else {
-      return { name: "Lejárt aukció", class: "bg-red-200 text-red-800" };
+      return { name: "Lejárt az idő", class: "bg-red-200 text-red-800" };
+    }
+  };
+
+  const getCurrentRoundForAuction = (auction: Auction) => {
+    const now = new Date();
+
+    if (
+      auction.round_1_start_time !== null &&
+      new Date(auction.round_1_start_time) > now
+    ) {
+      return "El nem kezdődött aukció"; // Auction not started
+    } else if (
+      auction.round_1_start_time !== null &&
+      auction.round_1_end_time !== null &&
+      new Date(auction.round_1_start_time) <= now &&
+      now <= new Date(auction.round_1_end_time)
+    ) {
+      return "1"; // Round 1
+    } else if (
+      auction.round_2_start_time !== null &&
+      auction.round_2_end_time !== null &&
+      new Date(auction.round_2_start_time) <= now &&
+      now <= new Date(auction.round_2_end_time)
+    ) {
+      return "2"; // Round 2
+    } else if (
+      auction.round_3_start_time !== null &&
+      auction.round_3_end_time !== null &&
+      new Date(auction.round_3_start_time) <= now &&
+      now <= new Date(auction.round_3_end_time)
+    ) {
+      return "3"; // Round 3
+    } else if (
+      auction.round_3_end_time !== null &&
+      new Date(auction.round_3_end_time) < now
+    ) {
+      return "Lejárt aukció"; // Auction expired
+    } else {
+      return null; // Default case, if no other condition is met
     }
   };
 
@@ -547,6 +627,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
       ) : (
         <div className="w-full overflow-hidden rounded-lg shadow-xs">
           <Collapsible
+            open={isDesktop}
             triggerOpenedClassName="text-sm p-4 w-fit flex items-center font-semibold text-cyan-100 bg-cyan-700 rounded-lg shadow-md ml-5"
             triggerClassName="text-sm p-4 w-fit flex items-center font-semibold text-indigo-100 bg-indigo-700 rounded-lg shadow-md ml-5"
             trigger="Szűrők megjelenítése + "
@@ -599,11 +680,9 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                     selected={auctionType}
                     onChange={handleAuctionTypeChange}
                   />
-                  {auctionType === "online" && (
-                    <div className="mt-5">
-                      <CurrentRound onChange={handleCurrentRoundChange} />
-                    </div>
-                  )}
+                  <div className="mt-5">
+                    <CurrentRound onChange={handleCurrentRoundChange} />
+                  </div>
                 </div>
               </div>
               <div className="relative w-full lg:mx-6 focus-within:text-teal-500">
@@ -634,7 +713,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
             />
           </div>
 
-          <div className="w-full overflow-x-auto relative overflow-auto h-screen max-h-96 lg:max-h-[84rem] rounded-lg scroller scrollbar-gutter-stable">
+          <div className="w-full overflow-x-auto relative overflow-auto h-screen max-h-[40rem] lg:max-h-[44rem] rounded-lg scroller scrollbar-gutter-stable">
             {filteredAuctions.length > 0 ? (
               <table className="w-full whitespace-no-wrap">
                 <thead>
@@ -661,8 +740,49 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                         </svg>
                       </button>
                     </th>
-                    <th className="px-4 py-3 sticky top-0">
-                      <span>{props.post_code_to_settlement}</span>
+                    <th className="px-4 py-3 min-w-[200px] sticky top-0">
+                      <span className="relative -top-[5px]">
+                        {props.scraped_at}
+                      </span>
+                      <button
+                        title="Rendezés"
+                        className="ml-2"
+                        onClick={() => handleSortChange("auction_scraped_at")}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            fill="#fff"
+                            d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
+                          />
+                        </svg>
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 min-w-[120px] sticky top-0">
+                      <span className="relative -top-[5px]">
+                        {props.post_code_to_settlement}
+                      </span>
+                      <button
+                        title="Rendezés"
+                        className="ml-2"
+                        onClick={() => handleSortChange("post_code")}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            fill="#fff"
+                            d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
+                          />
+                        </svg>
+                      </button>
                     </th>
                     <th className="px-4 py-3 min-w-[265px] sticky top-0">
                       <span className="relative -top-[5px]">
@@ -708,28 +828,43 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                         </svg>
                       </button>
                     </th>
-                    <th className="px-4 py-3 min-w-[160px] sticky top-0">
-                      <span className="relative -top-[5px]">
-                        {props.minimal_price}
-                      </span>
-                      <button
-                        title="Rendezés"
-                        className="ml-2"
-                        onClick={() => handleSortChange("minimal_price")}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            fill="#fff"
-                            d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
-                          />
-                        </svg>
-                      </button>
-                    </th>
+                    {[1, 2, 3].includes(currentRound) ? (
+                      <>
+                        <th className="px-4 py-3 min-w-[175px] sticky top-0">
+                          <span className="relative -top-[5px]">
+                            {props.round_min_price}
+                          </span>
+
+                          <button
+                            title="Rendezés"
+                            className="ml-2"
+                            onClick={() =>
+                              handleSortChange(
+                                `round_${currentRound}_min_price`
+                              )
+                            }
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                fill="#fff"
+                                d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
+                              />
+                            </svg>
+                          </button>
+                        </th>
+                      </>
+                    ) : (
+                      <>
+                        <th className="px-4 py-3 min-w-[160px] sticky top-0">
+                          {props.round_min_price}
+                        </th>
+                      </>
+                    )}
                     <th className="px-4 py-3 min-w-[100px] sticky top-0">
                       <span>{props.auction_type}</span>
                     </th>
@@ -755,17 +890,55 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                         </svg>
                       </button>
                     </th>
-                    <th className="px-4 py-3 min-w-[160px] sticky top-0">
-                      {props.highest_bid}
+                    <th className="px-4 py-3 min-w-[200px] sticky top-0">
+                      <span className="relative -top-[5px]">
+                        {props.highest_bid}
+                      </span>
+                      <button
+                        title="Rendezés"
+                        className="ml-2"
+                        onClick={() => handleSortChange("highest_bid")}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            fill="#fff"
+                            d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
+                          />
+                        </svg>
+                      </button>
+                    </th>
+                    <th className="px-4 py-3 min-w-[200px] sticky top-0">
+                      <span className="relative -top-[5px]">
+                        {props.number_of_bids}
+                      </span>
+                      <button
+                        title="Rendezés"
+                        className="ml-2"
+                        onClick={() => handleSortChange("number_of_bids")}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            fill="#fff"
+                            d="m6.288 4.293l-3.995 4l-.084.095a1 1 0 0 0 .084 1.32l.095.083a1 1 0 0 0 1.32-.084L6 7.41V19l.007.117a1 1 0 0 0 .993.884l.117-.007A1 1 0 0 0 8 19V7.417l2.293 2.29l.095.084a1 1 0 0 0 1.319-1.499l-4.006-4l-.094-.083a1 1 0 0 0-1.32.084M17 4.003l-.117.007a1 1 0 0 0-.883.993v11.58l-2.293-2.29l-.095-.084a1 1 0 0 0-1.319 1.498l4.004 4l.094.084a1 1 0 0 0 1.32-.084l3.996-4l.084-.095a1 1 0 0 0-.084-1.32l-.095-.083a1 1 0 0 0-1.32.084L18 16.587V5.003l-.007-.116A1 1 0 0 0 17 4.003"
+                          />
+                        </svg>
+                      </button>
                     </th>
                     <th className="px-4 py-3 min-w-[160px] sticky top-0">
                       {props.current_round}
                     </th>
                     {[1, 2, 3].includes(currentRound) ? (
                       <>
-                        <th className="px-4 py-3 min-w-[160px] sticky top-0">
-                          {props.round_min_price}
-                        </th>
                         <th className="px-4 py-3 min-w-[160px] sticky top-0">
                           <span className="relative -top-[5px]">
                             {props.round_end_time}
@@ -833,6 +1006,16 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                         </p>
                       </td>
                       <td className="px-4 py-3 text-sm">
+                        {new Date(auction.scraped_at).toLocaleString("hu-HU", {
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: false,
+                        })}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
                         <p className="font-semibold">
                           {auction.post_code_to_settlement.post_code}
                         </p>
@@ -844,7 +1027,7 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                           passHref
                         >
                           <div className="flex items-center text-sm">
-                            <div className="relative hidden w-14 h-14 min-w-[50px] mr-3 rounded-full md:block">
+                            <div className="relative w-14 h-14 min-w-[60px] min-h-[60px] mr-3 rounded-full">
                               <img
                                 className="object-cover w-full h-full rounded-full"
                                 src={
@@ -872,9 +1055,46 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                           </div>
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-sm">{`${auction.starting_price.toLocaleString()} Ft`}</td>
 
-                      <td className="px-4 py-3 text-sm">{`${auction.minimal_price.toLocaleString()} Ft`}</td>
+                      <td className="px-4 py-3 text-sm">{`${auction.starting_price.toLocaleString()} Ft`}</td>
+                      {(auction.auction_type === "online" &&
+                        auction.last_auction_history.final_result === null &&
+                        [1, 2, 3].includes(currentRound)) ||
+                      (auction.auction_type === "online" &&
+                        auction.last_auction_history.final_result != null &&
+                        [1, 2, 3].includes(currentRound)) ||
+                      (auction.auction_type === "offline" &&
+                        auction.last_auction_history.final_result != null &&
+                        [1, 2, 3].includes(currentRound)) ? (
+                        <>
+                          <td className="">
+                            <p
+                              className={`px-2 py-1 font-semibold leading-tight rounded-full text-sm mt-3 w-fit ${
+                                getRoundDisplay(
+                                  getCurrentRoundForAuction(auction)
+                                ).class
+                              }`}
+                            >
+                              {getRoundMinPrice(auction)}
+                            </p>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="">
+                            <p
+                              className={`px-2 py-1 font-semibold leading-tight rounded-full text-sm mt-3 w-fit ${
+                                getRoundDisplay(
+                                  getCurrentRoundForAuction(auction)
+                                ).class
+                              }`}
+                            >
+                              {getRoundMinPrice(auction)}
+                            </p>
+                          </td>
+                        </>
+                      )}
+
                       <td className="px-4 py-3 text-xs">
                         <span
                           className={`px-2 py-1 font-semibold leading-tight rounded-full ${
@@ -901,60 +1121,47 @@ const AuctionTableList: React.FC<TableHead> = (props: TableHead) => {
                       </td>
                       <td className="px-4 py-3 text-sm">
                         {auction.last_auction_history &&
-                        auction.last_auction_history.highest_bid ? (
+                        auction.last_auction_history.highest_bid != null ? (
                           <span className="text-teal-500 dark:text-teal-400 font-bold">
                             {auction.last_auction_history.highest_bid.toLocaleString()}{" "}
                             Ft
                           </span>
                         ) : (
                           <span className="text-red-500 dark:text-gray-400 font-bold">
-                            Nincs ajánlat
+                            0 Ft
                           </span>
                         )}
                       </td>
-
+                      <td className="px-4 py-3 text-sm">
+                        <span className="text-teal-500 dark:text-teal-400 font-bold">
+                          {auction.last_auction_history.number_of_bids
+                            ? auction.last_auction_history.number_of_bids.toLocaleString()
+                            : 0}{" "}
+                          db
+                        </span>
+                      </td>
                       <td>
                         <p
                           className={`px-2 py-1 font-semibold leading-tight rounded-full text-sm mt-3 w-fit ${
-                            getRoundDisplay(auction.current_round).class
+                            getRoundDisplay(getCurrentRoundForAuction(auction))
+                              .class
                           }`}
                         >
-                          {getRoundDisplay(auction.current_round).name}
+                          {
+                            getRoundDisplay(getCurrentRoundForAuction(auction))
+                              .name
+                          }
                         </p>
                       </td>
-                      {auction.auction_type === "online" &&
-                      auction.last_auction_history.final_result === null &&
-                      [1, 2, 3].includes(currentRound) ? (
-                        <>
-                          <td className="">
-                            <p
-                              className={`px-2 py-1 font-semibold leading-tight rounded-full text-sm mt-3 w-fit ${
-                                getRoundDisplay(auction.current_round).class
-                              }`}
-                            >
-                              {getRoundMinPrice(auction)}
-                            </p>
-                          </td>
-                          <td className="px-4 py-3 text-sm">
-                            {getRoundEndTime(auction)}
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td className="px-4 py-3 text-sm">
-                            {new Date(
-                              auction.online_auction_planned_end_time
-                            ).toLocaleString("hu-HU", {
-                              year: "numeric",
-                              month: "2-digit",
-                              day: "2-digit",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: false,
-                            })}
-                          </td>
-                        </>
-                      )}
+                      <td className="px-4 py-3 text-xs">
+                        <p
+                          className={
+                            getAuctionEndTimeStyled(auction).styleClass
+                          }
+                        >
+                          {getAuctionEndTimeStyled(auction).endTime}
+                        </p>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

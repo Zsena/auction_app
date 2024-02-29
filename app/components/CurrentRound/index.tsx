@@ -10,12 +10,12 @@ interface CurrentRoundProps {
 const CurrentRound: React.FC<CurrentRoundProps> = ({ onChange }) => {
   return (
     <label className="block mt-4 text-sm">
-      <span className="text-gray-700 dark:text-gray-400">Aukciós kör</span>
-      <select className="primary-select mt-2" onChange={onChange}>
+      <span className="text-gray-700 dark:text-gray-400">Aukciós szakasz</span>
+      <select className="primary-select mt-2" onChange={onChange} defaultValue="">
         <option value="">Összes kör</option>
-        <option value="1">Első kör</option>
-        <option value="2">Második kör</option>
-        <option value="3">Harmadik kör</option>
+        <option value="1">Első szakasz</option>
+        <option value="2">Második szakasz</option>
+        <option value="3">Harmadik szakasz</option>
       </select>
     </label>
   );

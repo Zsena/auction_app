@@ -1,7 +1,5 @@
 @tailwind base;
 @tailwind components;
-@tailwind utilities;
-
 .primary-btn {
   @apply flex items-center justify-between w-full px-4 py-2 text-sm font-medium leading-5 
     text-white transition-colors duration-150 bg-teal-700 border border-transparent rounded-lg active:bg-teal-700 
@@ -46,11 +44,11 @@
   @apply bg-transparent;
 }
 
-.scroller:hover::-webkit-scrollbar-thumb {
+.scroller::-webkit-scrollbar-thumb {
   @apply bg-gray-500 dark:bg-zinc-700;
 }
 .scroller:hover::-webkit-scrollbar-track {
-  @apply bg-gray-300;
+  @apply bg-teal-500 dark:bg-gray-300;
 }
 
 .scrollbar-gutter-stable {
@@ -58,10 +56,9 @@
 }
 
 .scroller::-webkit-scrollbar {
-  max-width: 0.5rem;
-  max-height: 0.5rem;
+  max-width: 0.8rem;
+  max-height: 0.8rem;
 }
-
 
 ::-webkit-scrollbar {
   max-width: 1rem;
@@ -71,3 +68,5 @@
 .scroller:hover {
   --fix: ; /* This custom property invalidates styles on hover, thereby enforcing a style recomputation. This is needed to work around a bug in Safari. */
 }
+
+@tailwind utilities;

@@ -13,7 +13,7 @@ const ToggleNav: React.FC<ToggleNavProps> = ({
   return (
     <div>
       <button
-        className={`p-1 mr-5 -ml-1 rounded-md focus:outline-none focus:shadow-outline-teal ${
+        className={`w-full p-1 mr-5 -ml-1 rounded-md focus:outline-none focus:shadow-outline-teal ${
             isOpen ? "flex justify-end" : ""
           }`}
         aria-label="Menu"
