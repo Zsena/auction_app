@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Hungarian Real-Estate Auction Explorer
 
-## Getting Started
+A **Next.js + TypeScript** frontend for browsing and filtering Hungarian real-estate auction data.
 
-First, run the development server:
+The project focuses on turning a large auction dataset into a practical, searchable interface with responsive filtering, sorting and pagination.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Features
+
+- Search by address and execution number
+- Filter by county
+- Filter by building type and classification
+- Filter by auction status
+- Filter by move-in availability
+- Starting-price and minimum-price ranges
+- Current auction-round filtering
+- Sortable auction data
+- Pagination
+- Responsive desktop/mobile layout
+- Image slider and lightbox components
+- Light/dark theme support
+
+## Tech stack
+
+- **Next.js 14**
+- **React 18**
+- **TypeScript**
+- **Tailwind CSS**
+- **Next Themes**
+- Heroicons / Iconify
+
+## Project structure
+
+```text
+app/
+├── components/
+│   ├── AuctionTableList/
+│   ├── BuildingType/
+│   ├── CountyCheckboxList/
+│   ├── CurrentRound/
+│   ├── MinimalPriceFilter/
+│   ├── Pagination/
+│   ├── StartingPriceFilter/
+│   ├── ThemeSwitcher/
+│   └── ...
+├── layout.tsx
+└── page.tsx
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The main auction table builds a filter payload from the selected UI controls and requests paginated auction data from a JSON API.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Local development
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+```bash
+npm install
+npm run dev
+```
 
-## Learn More
+Open [http://localhost:3000](http://localhost:3000).
 
-To learn more about Next.js, take a look at the following resources:
+## Build
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run build
+npm start
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+## Notes
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+This repository is a frontend project/prototype and depends on its auction-data API being available.
